@@ -1,49 +1,45 @@
-import random
+import argparse
+import numpy as np
+import os
 
 import datasets
+import engine
+import models
 
 
-def main1():
-  dataset_dir = '/home/ubuntu/datasets/moma/'
+def main(cfg):
+  dataset_train = datasets.MomaSpatialGraph(cfg, 'train')
+  dataset_val = datasets.MomaSpatialGraph(cfg, 'val')
+  model = models.RGCNModel(cfg)
+  trainer = engine.Trainer(cfg)
 
-  api = datasets.get_momaapi(dataset_dir, 'untrimmed_video')
-  print(api.annotations['0M1QrMIa7cg'])
-
-  api = datasets.get_momaapi(dataset_dir, 'trimmed_video')
-  print(api.annotations['20201115222849'])
-
-  api = datasets.get_momaapi(dataset_dir, 'spatial_graph')
-  print(api.annotations['20201117105640_1'])
+  trainer.fit(model, dataset_train, dataset_val)
 
 
-def main2():
-  dataset_dir = '/home/ubuntu/datasets/moma'
-  level = 'trimmed_video'
+def split_dataset(cfg, train_ratio=0.8, level='spatial_graph'):
+  moma = datasets.get_momaapi(cfg.data_dir, level)
+  length = len(moma.annotations)
+  length_train = round(length*train_ratio)
+  indices_train = np.random.choice(np.arange(length), length_train, replace=False)
+  indices_train = np.sort(indices_train)
 
-  dataset = datasets.Moma(dataset_dir, level, True)
-  video, annotation = dataset[0]
-  print(video.shape, len(annotation))
-  print(len(annotation['graphs']))
-
-
-def main3():
-  dataset_dir = '/home/ubuntu/datasets/moma'
-
-  api = datasets.get_momaapi(dataset_dir, 'spatial_graph')
-
-  ids = sorted(api.annotations.keys())
-  id = random.choice(ids)
-
-  annotation = api.get_annotation(id)
-  datasets.Moma.parse_graph(annotation)
-  print(annotation)
-
-
-def main4():
-  dataset_dir = '/home/ubuntu/datasets/moma'
-  api = datasets.get_momaapi(dataset_dir, 'spatial_graph')
-  api.sanity_check()
+  np.save(os.path.join(cfg.data_dir, 'split_{}.npy'.format(level)), indices_train)
 
 
 if __name__ == '__main__':
-  main4()
+  parser = argparse.ArgumentParser()
+
+  parser.add_argument('--gpu', default=1, type=int)
+  parser.add_argument('--num_workers', default=4, type=int)
+
+  parser.add_argument('--data_dir', default='/home/ubuntu/datasets/MOMA', type=str)
+  parser.add_argument('--save_dir', default='/home/ubuntu/ckpt/moma-model', type=str)
+  parser.add_argument('--num_epochs', default=100, type=int)
+  parser.add_argument('--batch_size', default=128, type=int)
+
+  parser.add_argument('--lr', default=0.01, type=float)
+  parser.add_argument('--weight_decay', default=5e-4, type=float)
+
+  cfg = parser.parse_args()
+
+  main(cfg)

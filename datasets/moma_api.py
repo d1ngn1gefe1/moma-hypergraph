@@ -1,11 +1,10 @@
 from abc import ABC
 import json
-import numpy as np
 import os
 import re
 
 
-def get_momaapi(dataset_dir, level, sampled=True):
+def get_momaapi(data_dir, level, sampled=True):
   """
   Three levels of hierarchy:
    - Untrimmed video
@@ -13,34 +12,34 @@ def get_momaapi(dataset_dir, level, sampled=True):
    - Spatial graph
 
   Parameters:
-    dataset_dir: the directory that contains videos and annotations
+    data_dir: the directory that contains videos and annotations
     level: ['untrimmed_video', 'trimmed_video', 'spatial_graph']
     sampled: for MomaApiTrimmedVideo only, whether to load the sampled videos
   """
   assert level in ['untrimmed_video', 'trimmed_video', 'spatial_graph']
 
   if level == 'untrimmed_video':
-    return MomaApiUntrimmedVideo(dataset_dir)
+    return MomaApiUntrimmedVideo(data_dir)
   elif level == 'trimmed_video':
-    return MomaApiTrimmedVideo(dataset_dir, sampled=sampled)
+    return MomaApiTrimmedVideo(data_dir, sampled=sampled)
   else:  # level == 'spatial_graph'
-    return MomaApiSpatialGraph(dataset_dir)
+    return MomaApiSpatialGraph(data_dir)
 
 
 class MomaApi(ABC):
-  def __init__(self, dataset_dir, annotations_dname='annotations', untrimmed_videos_dname='untrimmed_videos',
+  def __init__(self, data_dir, annotations_dname='annotations', untrimmed_videos_dname='untrimmed_videos',
                trimmed_videos_dname='trimmed_videos', trimmed_sampled_videos_dname='trimmed_sampled_videos'):
-    self.annotations_dir = os.path.join(dataset_dir, annotations_dname)
-    self.untrimmed_videos_dir = os.path.join(dataset_dir, untrimmed_videos_dname)
-    self.trimmed_videos_dir = os.path.join(dataset_dir, trimmed_videos_dname)
-    self.trimmed_sampled_videos_dir = os.path.join(dataset_dir, trimmed_sampled_videos_dname)
+    self.annotations_dir = os.path.join(data_dir, annotations_dname)
+    self.untrimmed_videos_dir = os.path.join(data_dir, untrimmed_videos_dname)
+    self.trimmed_videos_dir = os.path.join(data_dir, trimmed_videos_dname)
+    self.trimmed_sampled_videos_dir = os.path.join(data_dir, trimmed_sampled_videos_dname)
 
     self.raw_video_annotations = self.load_raw_video_annotations()
     self.raw_graph_annotations = self.load_raw_graph_annotations()
 
-    self.activity_cnames, self.subactivity_cnames, self.actor_cnames, self.object_cnames, \
-        self.atomic_action_cnames, self.relationship_cnames = self.get_cnames()
-    self.__trimmed_to_untrimmed, self.__spatial_to_trimmed = self.setup_mapping()
+    self.activity_cnames, self.subactivity_cnames, self.actor_cnames, self.object_cnames, self.atomic_action_cnames, \
+        self.relationship_cnames, self.activity_cids, self.subactivity_cids, self.untrimmed_video_ids, \
+        self.trimmed_video_ids = self.create_index()
 
   def load_raw_video_annotations(self):
     """
@@ -66,15 +65,25 @@ class MomaApi(ABC):
 
     return raw_graph_annotations
 
-  def get_cnames(self):
+  @staticmethod
+  def get_spatial_graph_id(raw_graph_annotation):
+    return '{}_{}'.format(raw_graph_annotation['instance_id'], raw_graph_annotation['picture_num'])
+
+  def create_index(self):
     """
-    Return a list of arrays that map from class id to class name
+    Return arrays that map from class id to class name
       - activity_cnames: activity_cid -> activity_cname
       - subactivity_cnames: subactivity_cid -> subactivity_cname
       - actor_cnames: actor_cid -> actor_cname
       - object_cnames: object_cid -> object_cname
       - atomic_action_cnames: atomic_action_cid -> atomic_action_cname
       - relationship_cnames: relationship_cid -> relationship_cname
+    Return dicts that map from id to cid
+      - activity_cids: untrimmed_video_id -> activity_cid
+      - subactivity_cids: trimmed_video_id -> subactivity_cid
+    Return dicts that map from lower-level id to higher-level id
+      - untrimmed_video_ids: trimmed_video_id -> untrimmed_video_id
+      - trimmed_video_ids: spatial_graph_id -> trimmed_video_id
     """
     activity_cnames_path = os.path.join(self.annotations_dir, 'activity_cnames.txt')
     subactivity_cnames_path = os.path.join(self.annotations_dir, 'subactivity_cnames.txt')
@@ -83,9 +92,17 @@ class MomaApi(ABC):
     atomic_action_cnames_path = os.path.join(self.annotations_dir, 'atomic_action_cnames.txt')
     relationship_cnames_path = os.path.join(self.annotations_dir, 'relationship_cnames.txt')
 
+    activity_cids_path = os.path.join(self.annotations_dir, 'activity_cids.json')
+    subactivity_cids_path = os.path.join(self.annotations_dir, 'subactivity_cids.json')
+
+    untrimmed_video_ids_path = os.path.join(self.annotations_dir, 'untrimmed_video_ids.json')
+    trimmed_video_ids_path = os.path.join(self.annotations_dir, 'trimmed_video_ids.json')
+
     if all(list(map(os.path.isfile, [activity_cnames_path, subactivity_cnames_path, actor_cnames_path,
-                                     object_cnames_path, atomic_action_cnames_path, relationship_cnames_path]))):
-      print('Load cnames')
+                                     object_cnames_path, atomic_action_cnames_path, relationship_cnames_path,
+                                     activity_cids_path, subactivity_cids_path,
+                                     untrimmed_video_ids_path, trimmed_video_ids_path]))):
+      print('Load index')
       with open(activity_cnames_path, 'r') as f:
         activity_cnames = f.read().splitlines()
       with open(subactivity_cnames_path, 'r') as f:
@@ -99,7 +116,18 @@ class MomaApi(ABC):
       with open(relationship_cnames_path, 'r') as f:
         relationship_cnames = f.read().splitlines()
 
-      return activity_cnames, subactivity_cnames, actor_cnames, object_cnames, atomic_action_cnames, relationship_cnames
+      with open(activity_cids_path, 'r') as f:
+        activity_cids = json.load(f)
+      with open(subactivity_cids_path, 'r') as f:
+        subactivity_cids = json.load(f)
+
+      with open(untrimmed_video_ids_path, 'r') as f:
+        untrimmed_video_ids = json.load(f)
+      with open(trimmed_video_ids_path, 'r') as f:
+        trimmed_video_ids = json.load(f)
+
+      return activity_cnames, subactivity_cnames, actor_cnames, object_cnames, atomic_action_cnames, \
+             relationship_cnames, activity_cids, subactivity_cids, untrimmed_video_ids, trimmed_video_ids
 
     activity_cnames, subactivity_cnames = [], []
     for untrimmed_video_id, raw_video_annotation in self.raw_video_annotations.items():
@@ -125,7 +153,29 @@ class MomaApi(ABC):
     atomic_action_cnames = sorted(list(set(atomic_action_cnames)))
     relationship_cnames = sorted(list(set(relationship_cnames)))
 
-    print('Generate cnames')
+    activity_cids, subactivity_cids, untrimmed_video_ids, trimmed_video_ids = {}, {}, {}, {}
+
+    for untrimmed_video_id, raw_video_annotation in self.raw_video_annotations.items():
+      if untrimmed_video_id not in activity_cids:
+        activity_cids[untrimmed_video_id] = activity_cnames.index(raw_video_annotation['class'])
+
+      for subactivity in raw_video_annotation['subactivity']:
+        trimmed_video_id = subactivity['trim_video_id']
+
+        if trimmed_video_id not in subactivity_cids:
+          subactivity_cids[trimmed_video_id] = subactivity_cnames.index(subactivity['class'])
+
+        if trimmed_video_id not in untrimmed_video_ids:
+          untrimmed_video_ids[trimmed_video_id] = untrimmed_video_id
+
+    for raw_graph_annotation in self.raw_graph_annotations:
+      trimmed_video_id = raw_graph_annotation['instance_id']
+      spatial_graph_id = self.get_spatial_graph_id(raw_graph_annotation)
+
+      if spatial_graph_id not in trimmed_video_ids:
+        trimmed_video_ids[spatial_graph_id] = trimmed_video_id
+
+    print('Generate index')
     with open(activity_cnames_path, 'w') as f:
       f.write('\n'.join(activity_cnames))
     with open(subactivity_cnames_path, 'w') as f:
@@ -139,42 +189,18 @@ class MomaApi(ABC):
     with open(relationship_cnames_path, 'w') as f:
       f.write('\n'.join(relationship_cnames))
 
-    return activity_cnames, subactivity_cnames, actor_cnames, object_cnames, atomic_action_cnames, relationship_cnames
+    with open(activity_cids_path, 'w') as f:
+      f.write(json.dumps(activity_cids))
+    with open(subactivity_cids_path, 'w') as f:
+      f.write(json.dumps(subactivity_cids))
 
-  @staticmethod
-  def get_spatial_graph_id(raw_graph_annotation):
-    return '{}_{}'.format(raw_graph_annotation['instance_id'], raw_graph_annotation['picture_num'])
+    with open(untrimmed_video_ids_path, 'w') as f:
+      f.write(json.dumps(untrimmed_video_ids))
+    with open(trimmed_video_ids_path, 'w') as f:
+      f.write(json.dumps(trimmed_video_ids))
 
-  def setup_mapping(self):
-    """
-    Setup a mapping dict necessary for the function to_untrimmed_video_id()
-    """
-    trimmed_to_untrimmed = {}
-    for untrimmed_video_id, raw_video_annotation in self.raw_video_annotations.items():
-      for subactivity in raw_video_annotation['subactivity']:
-        trimmed_to_untrimmed[subactivity['trim_video_id']] = untrimmed_video_id
-
-    spatial_to_trimmed = {}
-    for raw_graph_annotation in self.raw_graph_annotations:
-      trimmed_video_id = raw_graph_annotation['instance_id']
-      spatial_graph_id = self.get_spatial_graph_id(raw_graph_annotation)
-      spatial_to_trimmed[spatial_graph_id] = trimmed_video_id
-
-    return trimmed_to_untrimmed, spatial_to_trimmed
-
-  def to_untrimmed_video_id(self, trimmed_video_id):
-    """
-    Return the untrimmed video id given the trimmed video id
-    """
-    untrimmed_video_id = self.__trimmed_to_untrimmed[trimmed_video_id]
-    return untrimmed_video_id
-
-  def to_trimmed_video_id(self, spatial_graph_id):
-    """
-    Return the trimmed video id given the spatial graph
-    """
-    trimmed_video_id = self.__spatial_to_trimmed[spatial_graph_id]
-    return trimmed_video_id
+    return activity_cnames, subactivity_cnames, actor_cnames, object_cnames, atomic_action_cnames, \
+           relationship_cnames, activity_cids, subactivity_cids, untrimmed_video_ids, trimmed_video_ids
 
   @staticmethod
   def parse_bbox(bbox):
@@ -202,7 +228,8 @@ class MomaApi(ABC):
   def parse_actor_instance_ids(actor_instance_ids):
     return actor_instance_ids.split(',')
 
-  def parse_description(self, description, instance_ids):
+  @staticmethod
+  def parse_description(description, instance_ids):
     """
     Return description as a list
     """
@@ -226,8 +253,8 @@ class MomaApi(ABC):
 
 
 class MomaApiUntrimmedVideo(MomaApi):
-  def __init__(self, dataset_dir):
-    super().__init__(dataset_dir)
+  def __init__(self, data_dir):
+    super().__init__(data_dir)
     self.annotations = self.load_annotations()
 
   def load_annotations(self):
@@ -251,9 +278,9 @@ class MomaApiUntrimmedVideo(MomaApi):
       assert untrimmed_video_id == raw_video_annotation['video_id']
 
       annotation = {
-        'activity_cid': self.activity_cnames.index(raw_video_annotation['class']),
+        'activity_cid': self.activity_cids[untrimmed_video_id],
         'subactivities': [{'trimmed_video_id': subactivity['trim_video_id'],
-                           'subactivity_cid': self.subactivity_cnames.index(subactivity['class']),
+                           'subactivity_cid': self.subactivity_cids[subactivity['trim_video_id']],
                            'start': subactivity['start'],
                            'end': subactivity['end']} for subactivity in raw_video_annotation['subactivity']]
       }
@@ -262,7 +289,7 @@ class MomaApiUntrimmedVideo(MomaApi):
 
     for raw_graph_annotation in self.raw_graph_annotations:
       trimmed_video_id = raw_graph_annotation['instance_id']
-      untrimmed_video_id = self.to_untrimmed_video_id(trimmed_video_id)
+      untrimmed_video_id = self.untrimmed_video_ids[trimmed_video_id]
 
       if 'fps' not in annotations[untrimmed_video_id]:
         annotations[untrimmed_video_id]['fps'] = raw_graph_annotation['fps']
@@ -280,8 +307,8 @@ class MomaApiUntrimmedVideo(MomaApi):
 
 
 class MomaApiTrimmedVideo(MomaApi):
-  def __init__(self, dataset_dir, sampled):
-    super().__init__(dataset_dir)
+  def __init__(self, data_dir, sampled):
+    super().__init__(data_dir)
     self.annotations = self.load_annotations()
     self.sampled = sampled
 
@@ -318,17 +345,27 @@ class MomaApiTrimmedVideo(MomaApi):
 
     for untrimmed_video_id, raw_video_annotation in self.raw_video_annotations.items():
       for subactivity in raw_video_annotation['subactivity']:
+        trimmed_video_id = subactivity['trim_video_id']
         annotation = {
-          'activity_cid': self.activity_cnames.index(raw_video_annotation['class']),
-          'subactivity_cid': self.subactivity_cnames.index(subactivity['class']),
+          'activity_cid': self.activity_cids[untrimmed_video_id],
+          'subactivity_cid': self.subactivity_cids[trimmed_video_id],
           'graphs': []
         }
-        annotations[subactivity['trim_video_id']] = annotation
+        annotations[trimmed_video_id] = annotation
 
     for raw_graph_annotation in self.raw_graph_annotations:
       trimmed_video_id = raw_graph_annotation['instance_id']
+
       instance_ids = [actor['id_in_video'] for actor in raw_graph_annotation['annotation']['characters']]+\
                      [object['id_in_video'] for object in raw_graph_annotation['annotation']['objects']]
+
+      relationships = []
+      for relationship in raw_graph_annotation['annotation']['relationships']:
+        relationship_cid = self.relationship_cnames.index(relationship['class'])
+        description = self.parse_description(relationship['description'], instance_ids)
+        if description is not None:
+          relationships.append({'relationship_cid': relationship_cid, 'description': description})
+
       annotation = {
         'actors': [{
           'actor_cid': self.actor_cnames.index(actor['class']),
@@ -344,13 +381,12 @@ class MomaApiTrimmedVideo(MomaApi):
           'atomic_action_cid': self.atomic_action_cnames.index(atomic_action['class']),
           'actor_instance_ids': self.parse_actor_instance_ids(atomic_action['actor_id'])}
           for atomic_action in raw_graph_annotation['annotation']['atomic_actions']],
-        'relationships': [{
-          'relationship_cid': self.relationship_cnames.index(relationship['class']),
-          'description': self.parse_description(relationship['description'], instance_ids)}
-          for relationship in raw_graph_annotation['annotation']['relationships']]
+        'relationships': relationships
       }
-      assert len(annotations[trimmed_video_id]['graphs']) == raw_graph_annotation['picture_num']-1  # in-order
-      annotations[trimmed_video_id]['graphs'].append(annotation)
+      # assert len(annotations[trimmed_video_id]['graphs']) == raw_graph_annotation['picture_num']-1  # in-order
+
+      if len(relationships) > 0:
+          annotations[trimmed_video_id]['graphs'].append(annotation)
 
       if 'fps' not in annotations[trimmed_video_id]:
         annotations[trimmed_video_id]['fps'] = raw_graph_annotation['fps']
@@ -375,8 +411,8 @@ class MomaApiTrimmedVideo(MomaApi):
 
 
 class MomaApiSpatialGraph(MomaApi):
-  def __init__(self, dataset_dir):
-    super().__init__(dataset_dir)
+  def __init__(self, data_dir):
+    super().__init__(data_dir)
     self.annotations = self.load_annotations()
 
   def load_annotations(self):
@@ -410,27 +446,43 @@ class MomaApiSpatialGraph(MomaApi):
 
     for raw_graph_annotation in self.raw_graph_annotations:
       spatial_graph_id = self.get_spatial_graph_id(raw_graph_annotation)
+      trimmed_video_id = self.trimmed_video_ids[spatial_graph_id]
+      untrimmed_video_id = self.untrimmed_video_ids[trimmed_video_id]
+
+      instance_ids = [actor['id_in_video'] for actor in raw_graph_annotation['annotation']['characters']]+ \
+                     [object['id_in_video'] for object in raw_graph_annotation['annotation']['objects']]
+
+      relationships = []
+      for relationship in raw_graph_annotation['annotation']['relationships']:
+        relationship_cid = self.relationship_cnames.index(relationship['class'])
+        description = self.parse_description(relationship['description'], instance_ids)
+        if description is not None:
+          relationships.append({'relationship_cid': relationship_cid, 'description': description})
+
       annotation = {
-        'actors': [{
-          'actor_cid': self.actor_cnames.index(actor['class']),
-          'bbox': self.parse_bbox(actor['bbox']),
-          'instance_id': actor['id_in_video']}
-          for actor in raw_graph_annotation['annotation']['characters']],
-        'objects': [{
-          'object_cid': self.object_cnames.index(object['class']),
-          'bbox': self.parse_bbox(object['bbox']),
-          'instance_id': object['id_in_video']}
-          for object in raw_graph_annotation['annotation']['objects']],
-        'atomic_actions': [{
-          'atomic_action_cid': self.atomic_action_cnames.index(atomic_action['class']),
-          'actor_instance_ids': self.parse_actor_instance_ids(atomic_action['actor_id'])}
-          for atomic_action in raw_graph_annotation['annotation']['atomic_actions']],
-        'relationships': [{
-          'relationship_cid': self.relationship_cnames.index(relationship['class']),
-          'description': self.parse_description(relationship['description'])}
-          for relationship in raw_graph_annotation['annotation']['relationships']]
+        'activity_cid': self.activity_cids[untrimmed_video_id],
+        'subactivity_cid': self.subactivity_cids[trimmed_video_id],
+        'graph': {
+          'actors': [{
+            'actor_cid': self.actor_cnames.index(actor['class']),
+            'bbox': self.parse_bbox(actor['bbox']),
+            'instance_id': actor['id_in_video']}
+            for actor in raw_graph_annotation['annotation']['characters']],
+          'objects': [{
+            'object_cid': self.object_cnames.index(object['class']),
+            'bbox': self.parse_bbox(object['bbox']),
+            'instance_id': object['id_in_video']}
+            for object in raw_graph_annotation['annotation']['objects']],
+          'atomic_actions': [{
+            'atomic_action_cid': self.atomic_action_cnames.index(atomic_action['class']),
+            'actor_instance_ids': self.parse_actor_instance_ids(atomic_action['actor_id'])}
+            for atomic_action in raw_graph_annotation['annotation']['atomic_actions']],
+          'relationships': relationships
+        }
       }
-      annotations[spatial_graph_id] = annotation
+
+      if len(relationships) > 0:
+        annotations[spatial_graph_id] = annotation
 
     return annotations
 
