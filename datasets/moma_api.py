@@ -1,7 +1,8 @@
 from abc import ABC
 import json
-import math
+import numpy as np
 import os
+import re
 
 
 def get_momaapi(dataset_dir, level, sampled=True):
@@ -39,7 +40,7 @@ class MomaApi(ABC):
 
     self.activity_cnames, self.subactivity_cnames, self.actor_cnames, self.object_cnames, \
         self.atomic_action_cnames, self.relationship_cnames = self.get_cnames()
-    self.__trimmed_to_untrimmed = self.setup_mapping()
+    self.__trimmed_to_untrimmed, self.__spatial_to_trimmed = self.setup_mapping()
 
   def load_raw_video_annotations(self):
     """
@@ -140,6 +141,10 @@ class MomaApi(ABC):
 
     return activity_cnames, subactivity_cnames, actor_cnames, object_cnames, atomic_action_cnames, relationship_cnames
 
+  @staticmethod
+  def get_spatial_graph_id(raw_graph_annotation):
+    return '{}_{}'.format(raw_graph_annotation['instance_id'], raw_graph_annotation['picture_num'])
+
   def setup_mapping(self):
     """
     Setup a mapping dict necessary for the function to_untrimmed_video_id()
@@ -149,16 +154,13 @@ class MomaApi(ABC):
       for subactivity in raw_video_annotation['subactivity']:
         trimmed_to_untrimmed[subactivity['trim_video_id']] = untrimmed_video_id
 
-    return trimmed_to_untrimmed
+    spatial_to_trimmed = {}
+    for raw_graph_annotation in self.raw_graph_annotations:
+      trimmed_video_id = raw_graph_annotation['instance_id']
+      spatial_graph_id = self.get_spatial_graph_id(raw_graph_annotation)
+      spatial_to_trimmed[spatial_graph_id] = trimmed_video_id
 
-  @staticmethod
-  def get_spatial_graph_id(raw_graph_annotation):
-    return '{}_{}'.format(raw_graph_annotation['instance_id'], raw_graph_annotation['picture_num'])
-
-  @staticmethod
-  def parse_spatial_graph_id(spatial_graph_id):
-    trimmed_video_id, frame_id = spatial_graph_id.split('_')
-    return trimmed_video_id, frame_id
+    return trimmed_to_untrimmed, spatial_to_trimmed
 
   def to_untrimmed_video_id(self, trimmed_video_id):
     """
@@ -171,7 +173,7 @@ class MomaApi(ABC):
     """
     Return the trimmed video id given the spatial graph
     """
-    trimmed_video_id, _ = self.parse_spatial_graph_id(spatial_graph_id)
+    trimmed_video_id = self.__spatial_to_trimmed[spatial_graph_id]
     return trimmed_video_id
 
   @staticmethod
@@ -200,14 +202,27 @@ class MomaApi(ABC):
   def parse_actor_instance_ids(actor_instance_ids):
     return actor_instance_ids.split(',')
 
-  @staticmethod
-  def parse_description(description):
+  def parse_description(self, description, instance_ids):
     """
     Return description as a list
     """
-    description = description[1:-1].split('),(')
-    description = [d.split(',') for d in description]
-    return description
+    # fix common issues
+    description = description.upper()
+    description = description.replace(')(', '),(').replace('.', ',').replace(',)', ')').replace(' ', '')\
+        .replace(',,', ',').replace('[', '(').replace(']', ')').replace('((', '(').replace('))', ')')
+    description = '('+description if description[0] != '(' else description
+    description = description+')' if description[-1] != ')' else description
+    if len(description) == 5:
+      description = '({}),({})'.format(description[1], description[3])
+
+    set = ''.join(instance_ids)
+    if len(instance_ids) > 0 and \
+       bool(re.match(r'^\(([A-Z]|[0-9]+)(,([A-Z]|[0-9]+))*\),\(([A-Z]|[0-9]+)(,([A-Z]|[0-9]+))*\)$', description)) and \
+       bool(re.match(r'^\([{}](,[{}])*\),\([{}](,[{}])*\)$'.format(set, set, set, set), description)):
+
+      return description
+    else:
+      return None
 
 
 class MomaApiUntrimmedVideo(MomaApi):
@@ -300,6 +315,7 @@ class MomaApiTrimmedVideo(MomaApi):
         }
     """
     annotations = {}
+
     for untrimmed_video_id, raw_video_annotation in self.raw_video_annotations.items():
       for subactivity in raw_video_annotation['subactivity']:
         annotation = {
@@ -311,6 +327,8 @@ class MomaApiTrimmedVideo(MomaApi):
 
     for raw_graph_annotation in self.raw_graph_annotations:
       trimmed_video_id = raw_graph_annotation['instance_id']
+      instance_ids = [actor['id_in_video'] for actor in raw_graph_annotation['annotation']['characters']]+\
+                     [object['id_in_video'] for object in raw_graph_annotation['annotation']['objects']]
       annotation = {
         'actors': [{
           'actor_cid': self.actor_cnames.index(actor['class']),
@@ -328,7 +346,7 @@ class MomaApiTrimmedVideo(MomaApi):
           for atomic_action in raw_graph_annotation['annotation']['atomic_actions']],
         'relationships': [{
           'relationship_cid': self.relationship_cnames.index(relationship['class']),
-          'description': self.parse_description(relationship['description'])}
+          'description': self.parse_description(relationship['description'], instance_ids)}
           for relationship in raw_graph_annotation['annotation']['relationships']]
       }
       assert len(annotations[trimmed_video_id]['graphs']) == raw_graph_annotation['picture_num']-1  # in-order
