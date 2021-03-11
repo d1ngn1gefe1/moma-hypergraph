@@ -5,6 +5,8 @@ from .moma_api import get_moma_api
 
 class MomaTrm(datasets.VisionDataset):
   def __init__(self, cfg):
+    super(MomaTrm, self).__init__(cfg.data_dir)
+
     self.cfg = cfg
     self.api = get_moma_api(cfg.data_dir, 'trm')
     self.keys = sorted(self.api.anns.keys())
@@ -13,9 +15,7 @@ class MomaTrm(datasets.VisionDataset):
     # cfg.num_object_classes = len(self.api.object_cnames)
     # cfg.num_relationship_classes = len(self.api.relationship_cnames)
 
-    super(MomaTrm, self).__init__(cfg.data_dir)
-
-  def __get_item__(self, index):
+  def __getitem__(self, index):
     trm_id = self.keys[index]
     trm_ann = self.api.anns[trm_id]
 

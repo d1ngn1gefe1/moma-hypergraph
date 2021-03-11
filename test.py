@@ -106,18 +106,23 @@ def main5():
 
 def main6():
   import argparse
+  import torch.utils.data
+  import utils
 
   parser = argparse.ArgumentParser()
   parser.add_argument('--data_dir', default='/home/ubuntu/datasets/MOMA', type=str)
   cfg = parser.parse_args()
 
   dataset = datasets.MomaTrm(cfg)
-  # video, trm_ann = next(iter(dataset))
-  # print(video.shape)
-  # print(len(trm_ann['ahgs']))
 
-  for video, trm_ann in dataset:
-    assert video.shape[0] == len(trm_ann['ahgs'])
+  # for video, trm_ann in dataset:
+  #   assert video.shape[0] == len(trm_ann['ahgs'])
+
+  dataloader = torch.utils.data.DataLoader(dataset, batch_size=2, collate_fn=utils.collate_fn)
+  videos, trm_anns = next(iter(dataloader))
+
+  print(videos.shape)
+
 
 
 if __name__ == '__main__':
