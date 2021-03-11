@@ -1,4 +1,4 @@
-from .moma import MomaTrimmedVideo, MomaSpatialGraph, to_data
-from .moma_api import get_momaapi
+from .moma_trm import MomaTrm
+from .moma_frm import MomaFrm
 
-__all__ = ('MomaTrimmedVideo', 'MomaSpatialGraph', 'to_data', 'get_momaapi')
+__all__ = ('MomaTrm', 'MomaFrm')

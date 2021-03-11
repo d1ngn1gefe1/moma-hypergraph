@@ -1,5 +1,6 @@
 from pprint import pprint
 import random
+from torchvision.io import read_video
 
 import datasets
 
@@ -42,8 +43,82 @@ def main3():
 
 def main4():
   dataset_dir = '/home/ubuntu/datasets/MOMA'
-  moma = datasets.MomaSpatialGraph(dataset_dir)
+  api = datasets.get_momaapi(dataset_dir, 'trimmed_video')
+
+  lengths = []
+  for trimmed_video_id, annotation in api.annotations.items():
+    video_path = api.get_video_path(trimmed_video_id)
+    video = read_video(video_path)[0]
+
+    if video.shape[0] != len(annotation['graphs']):
+      print('{}: {} vs. {}'.format(trimmed_video_id, video.shape[0], len(annotation['graphs'])))
+      continue
+
+    lengths.append(len(annotation['graphs']))
+
+  lengths = sorted(lengths)
+  print(lengths)
+
+
+def main5():
+  import numpy as np
+  import torch
+  from torch_geometric.data import DataLoader, Data, Batch
+
+  num_nodes = 4
+  num_features = 3
+  num_edges = 5
+
+  x = np.ones((num_nodes, num_features))
+  edge_index = np.random.randint(0, num_nodes, (num_edges, num_features))
+  data = Data(x=torch.from_numpy(x), edge_index=torch.from_numpy(edge_index))
+  dataloader = DataLoader([data, data], batch_size=2)
+  batch = next(iter(dataloader))
+  print(edge_index)
+
+  print(batch)
+  print(batch.x)
+  print(batch.edge_index)
+  print(batch.batch)
+
+  print('\n')
+
+  batch = Batch.from_data_list([data, data])
+  print(batch)
+  print(batch.x)
+  print(batch.edge_index)
+  print(batch.batch)
+
+  print('\n')
+
+  print(batch.batch)
+  setattr(data, 'batch_inner', data.batch)
+  delattr(batch, 'batch')
+
+  batch2d = Batch.from_data_list([batch, batch])
+  print(batch2d)
+  print(batch2d.x)
+  print(batch2d.edge_index)
+  print(batch2d.batch)
+
+  print('\n')
+
+
+def main6():
+  import argparse
+
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--data_dir', default='/home/ubuntu/datasets/MOMA', type=str)
+  cfg = parser.parse_args()
+
+  dataset = datasets.MomaTrm(cfg)
+  # video, trm_ann = next(iter(dataset))
+  # print(video.shape)
+  # print(len(trm_ann['ahgs']))
+
+  for video, trm_ann in dataset:
+    assert video.shape[0] == len(trm_ann['ahgs'])
 
 
 if __name__ == '__main__':
-  main4()
+  main6()
