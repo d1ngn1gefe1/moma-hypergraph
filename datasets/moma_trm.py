@@ -19,7 +19,7 @@ class MomaTrm(datasets.VisionDataset):
     trm_id = self.keys[index]
     trm_ann = self.api.anns[trm_id]
 
-    video_path = self.api.get_video_path(trm_id)
+    video_path = self.api.get_video_path(trm_id, sample=True)
     video = io.read_video(video_path, pts_unit='sec')[0]
 
     return video, trm_ann

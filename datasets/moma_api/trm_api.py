@@ -37,7 +37,10 @@ class TrmAPI(BaseAPI):
   def get_ann(self, trm_id):
     return self.anns[trm_id]
 
-  def get_video_path(self, trm_id):
-    video_path = os.path.join(self.trm_smp_dir, '{}.mp4'.format(trm_id))
+  def get_video_path(self, trm_id, sample=True):
+    if sample:
+      video_path = os.path.join(self.trm_smp_dir, '{}.mp4'.format(trm_id))
+    else:
+      video_path = os.path.join(self.trm_dir, '{}.mp4'.format(trm_id))
 
     return video_path
