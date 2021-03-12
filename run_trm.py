@@ -1,6 +1,4 @@
 import argparse
-import numpy as np
-import os
 
 import datasets
 import engine
@@ -8,8 +6,8 @@ import models
 
 
 def main(cfg):
-  dataset_train = datasets.MomaTrimmedVideo(cfg, 'train')
-  dataset_val = datasets.MomaTrimmedVideo(cfg, 'val')
+  dataset_train = datasets.MomaTrm(cfg)
+  dataset_val = datasets.MomaTrm(cfg)
   model = models.RGCNModel(cfg)
   trainer = engine.Trainer(cfg)
 

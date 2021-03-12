@@ -122,7 +122,7 @@ def main6():
   videos, trm_anns = next(iter(dataloader))
 
   print(videos.shape)
-
+  print([len(trm_ann['ahgs']) for trm_ann in trm_anns])
 
 
 if __name__ == '__main__':

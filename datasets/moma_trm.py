@@ -18,11 +18,7 @@ class MomaTrm(datasets.VisionDataset):
   def __getitem__(self, index):
     trm_id = self.keys[index]
     trm_ann = self.api.anns[trm_id]
-
-    video_path = self.api.get_video_path(trm_id, sample=True)
-    video = io.read_video(video_path, pts_unit='sec')[0]
-
-    return video, trm_ann
+    return trm_id, trm_ann
 
   def __len__(self):
     return len(self.api.anns)

@@ -1,5 +1,5 @@
 import torch
-from torch_geometric.data import DataLoader
+from torch.utils.data import DataLoader
 
 import utils
 
@@ -12,8 +12,10 @@ class Trainer:
 
   def fit(self, model, dataset_train, dataset_val):
     model = model.to(self.device)
-    dataloader_train = DataLoader(dataset_train, batch_size=self.cfg.batch_size, shuffle=True)
-    dataloader_val = DataLoader(dataset_val, batch_size=self.cfg.batch_size, shuffle=False)
+    dataloader_train = DataLoader(dataset_train, batch_size=self.cfg.batch_size, shuffle=True,
+                                  collate_fn=utils.collate_fn)
+    dataloader_val = DataLoader(dataset_val, batch_size=self.cfg.batch_size, shuffle=False,
+                                collate_fn=utils.collate_fn)
     optimizer = model.get_optimizer()
 
     for epoch in range(self.cfg.num_epochs):

@@ -29,6 +29,13 @@ class RGCN(nn.Module):
 class RGCNModel(nn.Module):
   def __init__(self, cfg):
     super(RGCNModel, self).__init__()
+
+    #todo
+    cfg.num_actor_classes = 6
+    cfg.num_object_classes = 7
+    cfg.num_relationship_classes = 8
+    cfg.num_classes = 9
+
     self.cfg = cfg
     self.net = RGCN(cfg.num_actor_classes+cfg.num_object_classes, cfg.num_relationship_classes, cfg.num_classes)
 

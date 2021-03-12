@@ -3,18 +3,38 @@ import torch
 from torch_geometric.data import Data
 
 
+def cat_vl(tensor_list):
+  """ Concatenate tensors of varying lengths
+  :param tensor_list: a list of tensors of varying tensor.shape[0] but same tensor.shape[1:]
+  :return: a concatenated tensor and chunk sizes
+  """
+  chunk_sizes = torch.Tensor([tensor.shape[0] for tensor in tensor_list])
+  tensor = torch.cat(tensor_list, dim=0)
+  return tensor, chunk_sizes
+
+
+def split_vl(tensor, chunk_sizes):
+  """ Split a tensor into sub-tensors of varying lengths
+  """
+  return list(torch.split(tensor, chunk_sizes.tolist()))
+
+
 def collate_fn(batch):
   elem = batch[0]
 
   if isinstance(elem, torch.Tensor):
-    indices = np.cumsum([x.shape[0] for x in batch]).tolist()[:-1]
-    return torch.cat(batch, 0), indices
-  elif isinstance(elem, np.ndarray):
-    return collate_fn([torch.as_tensor(b) for b in batch])
+    return torch.cat(batch, 0)
   elif isinstance(elem, dict):
     return batch
+  elif isinstance(elem, tuple):
+    # check to make sure that the elements in batch have consistent size
+    it = iter(batch)
+    elem_size = len(next(it))
+    if not all(len(elem) == elem_size for elem in it):
+      raise RuntimeError('each element in list of batch should be of equal size')
+    transposed = zip(*batch)
+    return [collate_fn(samples) for samples in transposed]
 
-  print(type(elem))
   raise TypeError
 
 

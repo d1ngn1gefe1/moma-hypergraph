@@ -198,14 +198,14 @@ class BaseAPI(ABC):
            act_cids, sact_cids, untrm_ids, trm_ids
 
   @staticmethod
-  def parse_bbox(bbox: Dict) -> BBox:
+  def parse_bbox(bbox: Dict, size: Size) -> BBox:
     x = [bbox['topLeft']['x'], bbox['bottomLeft']['x'], bbox['topRight']['x'], bbox['bottomRight']['x']]
     y = [bbox['topLeft']['y'], bbox['bottomLeft']['y'], bbox['topRight']['y'], bbox['bottomRight']['y']]
 
-    x1 = min(x)
-    y1 = min(y)
-    w = max(x)-x1+1
-    h = max(y)-y1+1
+    x1 = max(round(min(x)), 0)
+    y1 = max(round(min(y)), 0)
+    w = min(round(max(x)-x1+1), size.w-1)
+    h = min(round(max(y)-y1+1), size.h-1)
 
     return BBox(x1, y1, w, h)
 
@@ -213,19 +213,19 @@ class BaseAPI(ABC):
   def parse_size(size: dict) -> Size:
     return Size(size['width'], size['height'])
 
-  def parse_actor(self, actor: Dict) -> Actor:
+  def parse_actor(self, actor: Dict, size: Size) -> Entity:
     cid = self.actor_cnames.index(actor['class'])
     iid = actor['id_in_video']
-    bbox = self.parse_bbox(actor['bbox'])
+    bbox = self.parse_bbox(actor['bbox'], size)
 
-    return Actor(cid, iid, bbox)
+    return Entity(cid, iid, bbox)
 
-  def parse_object(self, object: Dict) -> Object:
+  def parse_object(self, object: Dict, size: Size) -> Entity:
     cid = self.object_cnames.index(object['class'])
     iid = object['id_in_video']
-    bbox = self.parse_bbox(object['bbox'])
+    bbox = self.parse_bbox(object['bbox'], size)
 
-    return Object(cid, iid, bbox)
+    return Entity(cid, iid, bbox)
 
   def parse_relationship(self, relationship: Dict) -> Relationship:
     cname = relationship['class']
@@ -245,9 +245,10 @@ class BaseAPI(ABC):
     return AAct(cid, actor_iids)
 
   def parse_ahg(self, raw_graph_ann):
+    size = self.parse_size(raw_graph_ann['frame_dim'])
     aacts = [self.parse_aact(aact) for aact in raw_graph_ann['annotation']['atomic_actions']]
-    actors = [self.parse_actor(actor) for actor in raw_graph_ann['annotation']['actors']]
-    objects = [self.parse_object(object) for object in raw_graph_ann['annotation']['objects']]
+    actors = [self.parse_actor(actor, size) for actor in raw_graph_ann['annotation']['actors']]
+    objects = [self.parse_object(object, size) for object in raw_graph_ann['annotation']['objects']]
     relationships = [self.parse_relationship(relationship) for relationship in raw_graph_ann['annotation']['relationships']]
     ahg = AHG(aacts, actors, objects, relationships)
 

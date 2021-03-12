@@ -1,21 +1,23 @@
-from collections import namedtuple
 from dataclasses import dataclass
 from typing import Dict, List, Set
 
 
-BBox = namedtuple('BBox', ['x1', 'y1', 'w', 'h'])
-Size = namedtuple('Size', ['w', 'h'])
+@dataclass
+class BBox:
+  x1: int
+  y1: int
+  w: int
+  h: int
 
 
 @dataclass
-class Actor:
-  cid: int
-  iid: int
-  bbox: BBox
+class Size:
+  w: int
+  h: int
 
 
 @dataclass
-class Object:
+class Entity:
   cid: int
   iid: int
   bbox: BBox
@@ -37,6 +39,6 @@ class AAct:
 @dataclass
 class AHG:
   aacts: List[AAct]
-  actors: List[Actor]
-  objects: List[Object]
+  actors: List[Entity]
+  objects: List[Entity]
   relationships: List[Relationship]
