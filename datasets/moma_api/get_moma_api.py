@@ -1,24 +1,24 @@
-from .untrm_api import UntrmAPI
-from .trm_api import TrmAPI
-from .frm_api import FrmAPI
+from .untrim_api import UntrimAPI
+from .trim_api import TrimAPI
+from .frame_api import FrameAPI
 
 
 def get_moma_api(data_dir, level):
   """
   Three levels of data hierarchy:
-   - Untrm-video-level
-   - Trm-video-level
+   - Untrim-video-level
+   - Trim-video-level
    - Frame-level
 
   Parameters:
     data_dir: the directory that contains videos and anns
-    level: ['untrm', 'trm', 'frm']
+    level: ['untrim', 'trim', 'frame']
   """
-  assert level in ['untrm', 'trm', 'frm']
+  assert level in ['untrim', 'trim', 'frame']
 
-  if level == 'untrm':
-    return UntrmAPI(data_dir)
-  elif level == 'trm':
-    return TrmAPI(data_dir)
-  else:  # level == 'frm'
-    return FrmAPI(data_dir)
+  if level == 'untrim':
+    return UntrimAPI(data_dir)
+  elif level == 'trim':
+    return TrimAPI(data_dir)
+  else:  # level == 'frame'
+    return FrameAPI(data_dir)

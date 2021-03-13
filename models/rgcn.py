@@ -33,11 +33,11 @@ class RGCNModel(nn.Module):
     #todo
     cfg.num_actor_classes = 6
     cfg.num_object_classes = 7
-    cfg.num_relationship_classes = 8
+    cfg.num_relat_classes = 8
     cfg.num_classes = 9
 
     self.cfg = cfg
-    self.net = RGCN(cfg.num_actor_classes+cfg.num_object_classes, cfg.num_relationship_classes, cfg.num_classes)
+    self.net = RGCN(cfg.num_actor_classes+cfg.num_object_classes, cfg.num_relat_classes, cfg.num_classes)
 
   def get_optimizer(self):
     optimizer = optim.Adam(self.net.parameters(), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay)

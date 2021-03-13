@@ -1,4 +1,5 @@
-from .moma_trm import MomaTrm
-from .moma_frm import MomaFrm
+from .moma_trim import MOMATrim
+from .moma_frame import MOMAFrame
+from .moma_video import MOMAVideo
 
-__all__ = ('MomaTrm', 'MomaFrm')
+__all__ = ('MOMATrim', 'MOMAFrame', 'MOMAVideo')

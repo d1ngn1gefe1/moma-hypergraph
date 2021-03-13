@@ -39,9 +39,9 @@ class Visualizer:
 
     text = []
     color = (0, 0, 255)
-    for relationship in graph['relationships']:
-      cname = self.api.relationship_cnames[relationship['relationship_cid']]
-      text.append('{}: {}'.format(cname, relationship['description']))
+    for relat in graph['relationships']:
+      cname = self.api.relat_cnames[relat['relat_cid']]
+      text.append('{}: {}'.format(cname, relat['description']))
 
     cv2.putText(image, ', '.join(text), (10, 80), font, 1, color, 2)
 

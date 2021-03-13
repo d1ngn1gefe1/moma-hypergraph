@@ -1,34 +1,35 @@
 from .base_api import BaseAPI
 
 
-class FrmAPI(BaseAPI):
+class FrameAPI(BaseAPI):
   def __init__(self, data_dir):
     super().__init__(data_dir)
-    self.anns = self.load_anns()
+    self._anns = self.load_anns()
+    self.frame_ids = sorted(self._anns.keys())
 
   def load_anns(self):
     """
     Return
-      - anns: a dict frm_id -> {
+      - anns: a dict frame_id -> {
         size: Size
-        ahg: AHG
+        ag: AG
       }
     """
     anns = {}
 
     for raw_graph_ann in self.raw_graph_anns:
-      frm_id = self.get_frm_id(raw_graph_ann)
-      ahg = self.parse_ahg(raw_graph_ann)
+      frame_id = self.get_frame_id(raw_graph_ann)
+      ag = self.parse_ag(raw_graph_ann)
 
-      anns[frm_id] = {
+      anns[frame_id] = {
         'size': self.parse_size(raw_graph_ann['frame_dim']),
-        'ahg': ahg
+        'ag': ag
       }
 
     return anns
 
-  def get_annotation(self, frm_id):
-    return self.anns[frm_id]
+  def get_ann(self, frame_id):
+    return self._anns[frame_id]
 
   def get_video_path(self):
     raise NotImplementedError

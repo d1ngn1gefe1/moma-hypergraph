@@ -2,12 +2,12 @@
 Extract actor and object features
 """
 import argparse
+import math
 import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchvision import io
 import torchvision.models as models
 import torchvision.ops as ops
 import torchvision.transforms as transforms
@@ -37,14 +37,14 @@ class FeatExtractor:
     self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
   @staticmethod
-  def extract_bboxes(ahgs):
+  def extract_bboxes(ags):
     bboxes = []
-    for i, ahg in enumerate(ahgs):
-      for actor in ahg.actors:
+    for i, ag in enumerate(ags):
+      for actor in ag.actors:
         x1, y1 = actor.bbox.x1, actor.bbox.y1
         x2, y2 = x1+actor.bbox.w, y1+actor.bbox.h
         bboxes.append([i, x1, y1, x2, y2])
-      for object in ahg.objects:
+      for object in ag.objects:
         x1, y1 = object.bbox.x1, object.bbox.y1
         x2, y2 = x1+object.bbox.w, y1+object.bbox.h
         bboxes.append([i, x1, y1, x2, y2])
@@ -56,28 +56,34 @@ class FeatExtractor:
     model = model.to(self.device)
     model = nn.DataParallel(model)
 
-    transform = transforms.Compose([
-      transforms.Lambda(lambda x: x.float().permute(0, 3, 1, 2)/255.),  # to_tensor
-      transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
+    transform = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
-    dataloader = DataLoader(dataset, batch_size=None, shuffle=False)
+    dataloader = DataLoader(dataset, batch_size=None, shuffle=False, num_workers=self.cfg.num_workers)
 
     model.eval()
     with torch.no_grad():
-      for trm_id, trm_ann in dataloader:
-        bboxes = self.extract_bboxes(trm_ann['ahgs'])
-        bboxes = torch.Tensor(bboxes).to(self.device)
+      for i, (trim_id, trim_ann, video) in enumerate(dataloader):
+        print('[{}] {}: len={}'.format(i, trim_id, video.shape[0]))
+        assert video.shape[0] == len(trim_ann['ags'])
 
-        video_path = dataset.api.get_video_path(trm_id, sample=True)
-        video = io.read_video(video_path, pts_unit='sec')[0]
+        bboxes = self.extract_bboxes(trim_ann['ags'])
+        bboxes = torch.Tensor(bboxes).to(self.device)
         video = video.to(self.device)
         video = transform(video)
-        print('{}: {}'.format(trm_id, video.shape))
-        assert video.shape[0] == len(trm_ann['ahgs'])
 
         # save memory
-        feat = model(video)
+        if video.shape[0] > self.cfg.batch_size:
+          print('split')
+          num_steps = math.ceil(video.shape[0]/self.cfg.batch_size)
+          feat = []
+          for step in range(num_steps):
+            start = step*self.cfg.batch_size
+            end = min((step+1)*self.cfg.batch_size, video.shape[0])
+            ret = model(video[start:end])
+            feat.append(ret)
+          feat = torch.cat(feat, dim=0)
+        else:
+          feat = model(video)
 
         feat = ops.roi_align(feat, bboxes, (7, 7), 1/32)
         feat = F.adaptive_avg_pool2d(feat, (1, 1))
@@ -96,12 +102,14 @@ class FeatExtractor:
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--data_dir', default='/home/ubuntu/datasets/MOMA', type=str)
+parser.add_argument('--num_workers', default=32, type=int)
+parser.add_argument('--batch_size', default=50, type=int)
 
 
 def main():
   cfg = parser.parse_args()
   model = FeatExtractorModel()
-  dataset = datasets.MomaTrm(cfg)
+  dataset = datasets.MOMATrim(cfg, 'video')
   feat_extractor = FeatExtractor(cfg)
   feat_extractor.fit(model, dataset)
 

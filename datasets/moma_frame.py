@@ -6,17 +6,17 @@ from torch_geometric.data import Dataset, InMemoryDataset, Data
 from .moma_api import get_moma_api
 
 
-class MomaFrm(InMemoryDataset):
+class MOMAFrame(InMemoryDataset):
   def __init__(self, cfg, split):
     self.cfg = cfg
     self.split = split
-    self.api = get_moma_api(cfg.data_dir, 'frm')
+    self.api = get_moma_api(cfg.data_dir, 'frame')
 
     cfg.num_actor_classes = len(self.api.actor_cnames)
     cfg.num_object_classes = len(self.api.object_cnames)
-    cfg.num_relationship_classes = len(self.api.relationship_cnames)
+    cfg.num_relat_classes = len(self.api.relat_cnames)
 
-    super(MomaFrm, self).__init__(cfg.data_dir)
+    super(MOMAFrame, self).__init__(cfg.data_dir)
 
     self.data, self.slices = torch.load(self.processed_paths[0])
 
@@ -45,7 +45,7 @@ class MomaFrm(InMemoryDataset):
     for key in keys:
       annotation = self.api.annotations[key]
       data = to_data(annotation['graph'], annotation['subactivity_cid'],
-                     self.cfg.num_actor_classes, self.cfg.num_object_classes, self.cfg.num_relationship_classes)
+                     self.cfg.num_actor_classes, self.cfg.num_object_classes, self.cfg.num_relat_classes)
       data_list.append(data)
 
     data, slices = self.collate(data_list)

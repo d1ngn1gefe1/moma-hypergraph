@@ -1,4 +1,6 @@
 import argparse
+import numpy as np
+import os
 
 import datasets
 import engine
@@ -6,12 +8,22 @@ import models
 
 
 def main(cfg):
-  dataset_train = datasets.MomaTrm(cfg)
-  dataset_val = datasets.MomaTrm(cfg)
+  dataset_train = datasets.MOMASpatialGraph(cfg, 'train')
+  dataset_val = datasets.MOMASpatialGraph(cfg, 'val')
   model = models.RGCNModel(cfg)
   trainer = engine.Trainer(cfg)
 
   trainer.fit(model, dataset_train, dataset_val)
+
+
+def split_dataset(cfg, train_ratio=0.8, level='spatial_graph'):
+  moma = datasets.get_momaapi(cfg.data_dir, level)
+  length = len(moma.annotations)
+  length_train = round(length*train_ratio)
+  indices_train = np.random.choice(np.arange(length), length_train, replace=False)
+  indices_train = np.sort(indices_train)
+
+  np.save(os.path.join(cfg.data_dir, 'split_{}.npy'.format(level)), indices_train)
 
 
 if __name__ == '__main__':
@@ -23,7 +35,7 @@ if __name__ == '__main__':
   parser.add_argument('--data_dir', default='/home/ubuntu/datasets/MOMA', type=str)
   parser.add_argument('--save_dir', default='/home/ubuntu/ckpt/moma-model', type=str)
   parser.add_argument('--num_epochs', default=100, type=int)
-  parser.add_argument('--batch_size', default=16, type=int)
+  parser.add_argument('--batch_size', default=128, type=int)
 
   parser.add_argument('--lr', default=0.01, type=float)
   parser.add_argument('--weight_decay', default=5e-4, type=float)

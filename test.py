@@ -22,7 +22,7 @@ def main2():
   dataset_dir = '/home/ubuntu/datasets/moma'
   level = 'trimmed_video'
 
-  dataset = datasets.Moma(dataset_dir, level, True)
+  dataset = datasets.MOMA(dataset_dir, level, True)
   video, annotation = dataset[0]
   print(video.shape, len(annotation))
   print(len(annotation['graphs']))
@@ -37,7 +37,7 @@ def main3():
   id = random.choice(ids)
 
   annotation = api.get_annotation(id)
-  datasets.Moma.parse_graph(annotation)
+  datasets.MOMA.parse_graph(annotation)
   print(annotation)
 
 
@@ -113,16 +113,16 @@ def main6():
   parser.add_argument('--data_dir', default='/home/ubuntu/datasets/MOMA', type=str)
   cfg = parser.parse_args()
 
-  dataset = datasets.MomaTrm(cfg)
+  dataset = datasets.MOMATrim(cfg)
 
-  # for video, trm_ann in dataset:
-  #   assert video.shape[0] == len(trm_ann['ahgs'])
+  # for video, trim_ann in dataset:
+  #   assert video.shape[0] == len(trim_ann['ags'])
 
   dataloader = torch.utils.data.DataLoader(dataset, batch_size=2, collate_fn=utils.collate_fn)
-  videos, trm_anns = next(iter(dataloader))
+  videos, trim_anns = next(iter(dataloader))
 
   print(videos.shape)
-  print([len(trm_ann['ahgs']) for trm_ann in trm_anns])
+  print([len(trim_ann['ags']) for trim_ann in trim_anns])
 
 
 if __name__ == '__main__':
