@@ -167,11 +167,17 @@ class AAct:
     if not all(is_actor(actor_iid) for actor_iid in self.actor_iids):
       raise ValueError
 
-  @property
-  def multilabels(self) -> np.ndarray:
-    multilabels = np.zeros((self.tracklets.shape[1], self.num_classes))
+  def get_multilabels(self, per_frame) -> np.ndarray:
+    multilabels = np.zeros((self.tracklets.shape[1], self.num_classes), dtype=np.int32)
+
     for j in range(self.tracklets.shape[1]):
       cids = sorted(set(chain(*[decode_aact(encoded_aact) for encoded_aact in self.tracklets[:, j]])))
       cids = [cid for cid in cids if cid >= 0]
       multilabels[j, cids] = 1
-    return multilabels  # [num_frames, num_classes]
+
+    # [num_frames, num_classes] -> [num_classes]
+    if not per_frame:  # per video
+      multilabels = np.sum(multilabels, axis=0)
+      multilabels[multilabels > 0] = 1
+
+    return multilabels

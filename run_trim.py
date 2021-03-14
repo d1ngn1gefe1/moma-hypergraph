@@ -25,7 +25,7 @@ def main():
   dataset_train = datasets.MOMATrim(cfg)
   # trim_id, trim_ann = next(iter(dataset_train))
   for trim_id, trim_ann in dataset_train:
-    print(trim_id, trim_ann['aact'].multilabels.shape)
+    print(trim_id, trim_ann['aact'].get_multilabels(False))
 
   # dataset_val = datasets.MOMATrim(cfg, fetch=('feat',))
   # model = models.RGCNModel(cfg)
