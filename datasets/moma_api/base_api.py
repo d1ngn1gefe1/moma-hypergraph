@@ -2,7 +2,7 @@ from abc import ABC
 import json
 import os
 
-from .data_structure import *
+from .data import *
 
 
 class BaseAPI(ABC):
@@ -265,40 +265,6 @@ class BaseAPI(ABC):
 
     return ag
 
-  @staticmethod
-  def decode_aact(encoded_aact: np.int64, n: int=2) -> Union[List[int], int]:
-    """
-     - actor absent: -2
-     - actor present + inactive: -1
-     - actor present + active: a sorted list of aact_cids
-    """
-    assert encoded_aact >= -2
-    if encoded_aact < 0:
-      return encoded_aact
-    else:
-      decoded_aact = sorted(set([int(str(encoded_aact)[max(i-n, 0):i])
-                                 for i in reversed(range(len(str(encoded_aact)), 0, -n))]))
-      return decoded_aact
-
-  @staticmethod
-  def encode_aact(decoded_aact: Union[List[int], int], n: int=2) -> np.int64:
-    if isinstance(decoded_aact, int):
-      assert decoded_aact == -1 or decoded_aact == 0
-      return decoded_aact
-    else:
-      assert all([x >= 0 and len(str(x)) <= n for x in decoded_aact])
-      encoded_aact = np.int64(''.join([str(x).zfill(n) for x in sorted(set(decoded_aact))]))
-      return encoded_aact
-
-  def add_encoded_aact(self, encoded_aact: np.int64, aact_cid: int):
-    assert encoded_aact >= -1, encoded_aact  # present
-    if encoded_aact == -1:  # first atomic action
-      return aact_cid
-    else:  # more than 1 atomic action
-      decoded_aact = sorted(set(self.decode_aact(encoded_aact)+[aact_cid]))
-      encoded_aact = self.encode_aact(decoded_aact)
-      return encoded_aact
-
   def parse_aact(self, raw_aact: List[List[Dict]], ags: List[AG]) -> AAct:
     assert len(raw_aact) == len(ags)
     num_frames = len(raw_aact)
@@ -322,6 +288,6 @@ class BaseAPI(ABC):
       for j_aact_cid, j_pst_atv_actor_iids in zip(j_aact_cids, j_pst_atv_actor_iids_list):
         j_pst_atv_actor_indices = [actor_iids.index(actor_iid) for actor_iid in j_pst_atv_actor_iids]
         for i in j_pst_atv_actor_indices:
-          tracklets[i, j] = self.add_encoded_aact(tracklets[i, j], j_aact_cid)
+          tracklets[i, j] = add_encoded_aact(tracklets[i, j], j_aact_cid)
 
-    return AAct(actor_iids, tracklets)
+    return AAct(actor_iids, tracklets, len(self.aact_cnames))

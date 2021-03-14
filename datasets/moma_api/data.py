@@ -1,7 +1,11 @@
 from dataclasses import dataclass
 from itertools import chain
 import numpy as np
-from typing import Dict, List, Set, Tuple, Union
+from typing import Dict, List, Set, Tuple
+
+
+""" Entity types
+"""
 
 
 def is_actor(iid):
@@ -10,6 +14,47 @@ def is_actor(iid):
 
 def is_object(iid):
   return iid.isnumeric()
+
+
+""" Atomic action encoding
+ - actor absent: [-2]
+ - actor present + inactive: [-1]
+ - actor present + active: a sorted list of aact_cids
+"""
+
+
+def decode_aact(encoded_aact: np.int64, n: int=2) -> List[int]:
+  assert encoded_aact >= -2
+  if encoded_aact < 0:
+    return [int(encoded_aact)]
+  else:
+    decoded_aact = sorted(set([int(str(encoded_aact)[max(i-n, 0):i])
+                               for i in reversed(range(len(str(encoded_aact)), 0, -n))]))
+    return decoded_aact
+
+
+def encode_aact(decoded_aact: List[int], n: int=2) -> np.int64:
+  if decoded_aact[0] < 0:
+    assert len(decoded_aact) == 1 and decoded_aact[0] >= -2
+    return np.int64(decoded_aact)
+  else:
+    assert all([x >= 0 and len(str(x)) <= n for x in decoded_aact])
+    encoded_aact = np.int64(''.join([str(x).zfill(n) for x in sorted(set(decoded_aact))]))
+    return encoded_aact
+
+
+def add_encoded_aact(encoded_aact: np.int64, aact_cid: int):
+  assert encoded_aact >= -1, encoded_aact  # present
+  if encoded_aact == -1:  # first atomic action
+    return aact_cid
+  else:  # more than 1 atomic action
+    decoded_aact = sorted(set(decode_aact(encoded_aact)+[aact_cid]))
+    encoded_aact = encode_aact(decoded_aact)
+    return encoded_aact
+
+
+""" Data structures
+"""
 
 
 @dataclass
@@ -116,7 +161,17 @@ class AG:
 class AAct:
   actor_iids: List[str]
   tracklets: np.ndarray  # [num_actors, num_frames]
+  num_classes: int
 
   def __post_init__(self):
     if not all(is_actor(actor_iid) for actor_iid in self.actor_iids):
       raise ValueError
+
+  @property
+  def multilabels(self) -> np.ndarray:
+    multilabels = np.zeros((self.tracklets.shape[1], self.num_classes))
+    for j in range(self.tracklets.shape[1]):
+      cids = sorted(set(chain(*[decode_aact(encoded_aact) for encoded_aact in self.tracklets[:, j]])))
+      cids = [cid for cid in cids if cid >= 0]
+      multilabels[j, cids] = 1
+    return multilabels  # [num_frames, num_classes]

@@ -14,6 +14,7 @@ class MOMATrim(datasets.VisionDataset):
     self.cfg = cfg
     self.fetch = fetch
     self.api = get_moma_api(cfg.data_dir, 'trim')
+    self.trim_ids = self.api.get_trim_ids()
 
     if 'feat' in self.fetch:
       self.feats = self.load_feats()
@@ -33,7 +34,7 @@ class MOMATrim(datasets.VisionDataset):
     return feats
 
   def __getitem__(self, index):
-    trim_id = self.api.trim_ids[index]
+    trim_id = self.trim_ids[index]
     trim_ann = self.api.get_ann(trim_id)
     out = [trim_id, trim_ann]
 
@@ -51,10 +52,6 @@ class MOMATrim(datasets.VisionDataset):
     elif 'feat' in self.fetch:
       feat = self.feats[index]
       out.append(feat)
-
-    print(trim_id, type(trim_id))
-    print(type(trim_ann))
-    print(type(feat), feat.shape)
 
     return tuple(out)
 

@@ -22,7 +22,11 @@ parser.add_argument('--weight_decay', default=5e-4, type=float)
 def main():
   cfg = parser.parse_args()
 
-  dataset_train = datasets.MOMATrim(cfg, fetch=('feat',))
+  dataset_train = datasets.MOMATrim(cfg)
+  # trim_id, trim_ann = next(iter(dataset_train))
+  for trim_id, trim_ann in dataset_train:
+    print(trim_id, trim_ann['aact'].multilabels.shape)
+
   # dataset_val = datasets.MOMATrim(cfg, fetch=('feat',))
   # model = models.RGCNModel(cfg)
   # trainer = engine.Trainer(cfg)
