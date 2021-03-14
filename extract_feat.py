@@ -51,7 +51,7 @@ class FeatExtractor:
     return bboxes
 
   def fit(self, model, dataset):
-    feat_list = []
+    feat_list, trim_ids = [], []
 
     model = model.to(self.device)
     model = nn.DataParallel(model)
@@ -91,12 +91,14 @@ class FeatExtractor:
 
         assert feat.shape[0] == bboxes.shape[0]
         feat_list.append(feat.detach().cpu())
+        trim_ids.append(trim_id)
 
-    feats_dir = os.path.join(self.cfg.data_dir, 'feats')
-    os.makedirs(feats_dir, exist_ok=True)
     feats, chunk_sizes = utils.cat_vl(feat_list)
-    torch.save(feats, os.path.join(feats_dir, 'feats.pt'))
-    torch.save(chunk_sizes, os.path.join(feats_dir, 'chunk_sizes.pt'))
+    os.makedirs(dataset.api.feats_dir, exist_ok=True)
+    torch.save(feats, os.path.join(dataset.api.feats_dir, 'feats.pt'))
+    torch.save(chunk_sizes, os.path.join(dataset.api.feats_dir, 'chunk_sizes.pt'))
+    with open(os.path.join(dataset.api.feats_dir, 'trim_ids.txt'), 'w+') as f:
+      f.write('\n'.join(trim_ids))
 
 
 parser = argparse.ArgumentParser()
@@ -109,7 +111,7 @@ parser.add_argument('--batch_size', default=50, type=int)
 def main():
   cfg = parser.parse_args()
   model = FeatExtractorModel()
-  dataset = datasets.MOMATrim(cfg, 'video')
+  dataset = datasets.MOMATrim(cfg, split=None, fetch=('video',))
   feat_extractor = FeatExtractor(cfg)
   feat_extractor.fit(model, dataset)
 

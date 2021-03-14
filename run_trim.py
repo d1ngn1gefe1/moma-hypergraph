@@ -1,4 +1,5 @@
 import argparse
+from pprint import pprint
 
 import datasets
 import engine
@@ -22,10 +23,16 @@ parser.add_argument('--weight_decay', default=5e-4, type=float)
 def main():
   cfg = parser.parse_args()
 
-  dataset_train = datasets.MOMATrim(cfg)
-  # trim_id, trim_ann = next(iter(dataset_train))
-  for trim_id, trim_ann in dataset_train:
-    print(trim_id, trim_ann['aact'].get_multilabels(False))
+  dataset_train = datasets.MOMATrim(cfg, 'train', ('feat',))
+  trim_id, trim_ann, feat = next(iter(dataset_train))
+
+  print(feat.shape)
+
+  num_nodes = 0
+  for ag in trim_ann['ags']:
+    num_nodes += ag.num_nodes
+  print(num_nodes)
+
 
   # dataset_val = datasets.MOMATrim(cfg, fetch=('feat',))
   # model = models.RGCNModel(cfg)

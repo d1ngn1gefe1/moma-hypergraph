@@ -8,13 +8,13 @@ import utils
 
 
 class MOMATrim(datasets.VisionDataset):
-  def __init__(self, cfg, fetch=()):
+  def __init__(self, cfg, split=None, fetch=()):
     super(MOMATrim, self).__init__(cfg.data_dir)
 
     self.cfg = cfg
     self.fetch = fetch
     self.api = get_moma_api(cfg.data_dir, 'trim')
-    self.trim_ids = self.api.get_trim_ids()
+    self.trim_ids = self.api.get_trim_ids(split=split)
 
     if 'feat' in self.fetch:
       self.feats = self.load_feats()
@@ -27,10 +27,26 @@ class MOMATrim(datasets.VisionDataset):
 
     return video, trim_ann
 
-  def load_feats(self, feats_fname='feats.pt', chunk_sizes_fname='chunk_sizes.pt'):
-    feats = torch.load(os.path.join(self.api.feats_dir, feats_fname))
+  def load_feats(self, feats_fname='feats.pt', chunk_sizes_fname='chunk_sizes.pt', trim_ids_fname='trim_ids.txt'):
+    all_feats = torch.load(os.path.join(self.api.feats_dir, feats_fname))
     chunk_sizes = torch.load(os.path.join(self.api.feats_dir, chunk_sizes_fname))
-    feats = utils.split_vl(feats, chunk_sizes)
+    with open(os.path.join(self.api.feats_dir, trim_ids_fname), 'r') as f:
+      all_trim_ids = f.read().splitlines()
+    all_feats = utils.split_vl(all_feats, chunk_sizes)
+
+    import time
+
+    tm = time.time()
+    indices = [all_trim_ids.index(trim_id) for trim_id in self.trim_ids]
+    feats = [all_feats[index] for index in indices]
+    print('1: {}'.format(time.time()-tm))
+    tm = time.time()
+    feats = []
+    for trim_id in self.trim_ids:
+      index = all_trim_ids.index(trim_id)
+      feats.append(all_feats[index])
+    print('2: {}'.format(time.time()-tm))
+
     return feats
 
   def __getitem__(self, index):
@@ -43,7 +59,7 @@ class MOMATrim(datasets.VisionDataset):
       video = io.read_video(video_path, pts_unit='sec')[0]
       video = video.float().permute(0, 3, 1, 2)/255.  # to_tensor
 
-      # resize when width > 2000
+      # reduce size when width > 2000
       if video.shape[-1] > 2000:
         video, trim_ann = self.resize(video, trim_ann)
         out[1] = trim_ann
@@ -56,4 +72,4 @@ class MOMATrim(datasets.VisionDataset):
     return tuple(out)
 
   def __len__(self):
-    return len(self.api.trim_ids)
+    return len(self.trim_ids)

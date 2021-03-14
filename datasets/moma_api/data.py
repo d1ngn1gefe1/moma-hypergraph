@@ -78,7 +78,7 @@ class BBox:
   def __hash__(self):
     return hash((self.x1, self.y1, self.w, self.h))
 
-  def resize(self, scale):
+  def resize(self, scale: float):
     return BBox(round(self.x1*scale), round(self.y1*scale), round(self.w*scale), round(self.h*scale))
 
 
@@ -99,8 +99,11 @@ class Entity:
   def __hash__(self):
     return hash((self.cid, self.iid, self.bbox))
 
-  def resize(self, scale):
+  def resize(self, scale: float):
     return Entity(self.cid, self.iid, self.bbox.resize(scale))
+
+  def __repr__(self):
+    return f'{self.type}(cid={self.cid}, iid={self.iid})'
 
   @property
   def type(self):
@@ -121,6 +124,9 @@ class Relat:
        any([not (is_actor(snk_iid) or is_object(snk_iid)) for snk_iid in self.snk_iids]):
       raise ValueError
 
+  def __repr__(self):
+    return f'Relat(cid={self.cid}), {self.src_iids}->{self.snk_iids}'
+
   def __eq__(self, other):
     return self.__class__ == other.__class__ \
            and self.cid == other.cid and self.src_iids == other.src_iids and self.snk_iids == other.snk_iids
@@ -139,6 +145,16 @@ class AG:
     if not set(self.relat_entity_iids).issubset(set(self.actor_iids+self.object_iids)):
       raise ValueError
 
+  def __repr__(self):
+    message = (
+        f'AG(\n'
+        f'\tactors={list(self.actors)}\n'
+        f'\tobjects={list(self.objects)}\n'
+        f'\trelats={list(self.relats)}\n'
+        f')'
+    )
+    return message
+
   @property
   def relat_entity_iids(self):
     return sorted(chain(*[relat.src_iids+relat.snk_iids for relat in self.relats]))
@@ -151,7 +167,15 @@ class AG:
   def object_iids(self):
     return sorted([object.iid for object in self.objects])
 
-  def resize(self, scale):
+  @property
+  def num_nodes(self):
+    return len(self.actors)+len(self.objects)
+
+  @property
+  def num_edges(self):
+    return len(self.relats)
+
+  def resize(self, scale: float):
     return AG(set([actor.resize(scale) for actor in self.actors]),
               set([object.resize(scale) for object in self.objects]),
               self.relats)
@@ -167,7 +191,17 @@ class AAct:
     if not all(is_actor(actor_iid) for actor_iid in self.actor_iids):
       raise ValueError
 
-  def get_multilabels(self, per_frame) -> np.ndarray:
+  def __repr__(self):
+    message = (
+      f'AAct(\n'
+      f'\tactor_iids={self.actor_iids}\n'
+      f'\tnum_actors={self.tracklets.shape[0]}\n'
+      f'\tnum_frames={self.tracklets.shape[1]}\n'
+      f')'
+    )
+    return message
+
+  def get_multilabels(self, per_frame: bool) -> np.ndarray:
     multilabels = np.zeros((self.tracklets.shape[1], self.num_classes), dtype=np.int32)
 
     for j in range(self.tracklets.shape[1]):
