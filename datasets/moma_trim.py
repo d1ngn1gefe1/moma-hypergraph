@@ -1,7 +1,10 @@
+import os
+import torch
 from torchvision import datasets, io
 import torchvision.transforms.functional as F
 
 from .moma_api import get_moma_api
+import utils
 
 
 class MOMATrim(datasets.VisionDataset):
@@ -12,9 +15,8 @@ class MOMATrim(datasets.VisionDataset):
     self.fetch = fetch
     self.api = get_moma_api(cfg.data_dir, 'trim')
 
-    # cfg.num_actor_classes = len(self.api.actor_cnames)
-    # cfg.num_object_classes = len(self.api.object_cnames)
-    # cfg.num_relat_classes = len(self.api.relat_cnames)
+    if 'feat' in self.fetch:
+      self.feats = self.load_feats()
 
   @staticmethod
   def resize(video, trim_ann, scale=0.5):
@@ -23,6 +25,12 @@ class MOMATrim(datasets.VisionDataset):
     trim_ann['ags'] = [ag.resize(scale) for ag in trim_ann['ags']]
 
     return video, trim_ann
+
+  def load_feats(self, feats_fname='feats.pt', chunk_sizes_fname='chunk_sizes.pt'):
+    feats = torch.load(os.path.join(self.api.feats_dir, feats_fname))
+    chunk_sizes = torch.load(os.path.join(self.api.feats_dir, chunk_sizes_fname))
+    feats = utils.split_vl(feats, chunk_sizes)
+    return feats
 
   def __getitem__(self, index):
     trim_id = self.api.trim_ids[index]
@@ -41,7 +49,12 @@ class MOMATrim(datasets.VisionDataset):
 
       out.append(video)
     elif 'feat' in self.fetch:
-      pass
+      feat = self.feats[index]
+      out.append(feat)
+
+    print(trim_id, type(trim_id))
+    print(type(trim_ann))
+    print(type(feat), feat.shape)
 
     return tuple(out)
 

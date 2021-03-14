@@ -17,23 +17,23 @@ class BaseAPI(ABC):
      - sub-activity: sact
      - atomic action: aact
      - action hypergraph: ag
-   - Graph
-      - src: source node
-      - snk: sink node
+       - src: source node
+       - snk: sink node
+       - relat: relationship
    - sample: sampled (video)
    - ann: annotations
    - iid: instance id
    - cid: class id
    - cname: class name
   """
-  def __init__(self, data_dir, anns_dname='anns',
-               untrim_dname='untrim_videos', trim_dname='trim_videos', trim_sample_dname='trim_sample_videos', feat_dname='feat'):
+  def __init__(self, data_dir, anns_dname='anns', untrim_dname='untrim_videos', trim_dname='trim_videos',
+               trim_sample_dname='trim_sample_videos', feats_dname='feats'):
     # directories
     self.anns_dir = os.path.join(data_dir, anns_dname)
     self.untrim_dir = os.path.join(data_dir, untrim_dname)
     self.trim_dir = os.path.join(data_dir, trim_dname)
     self.trim_sample_dir = os.path.join(data_dir, trim_sample_dname)
-    self.feat_dname = os.path.join(data_dir, feat_dname)
+    self.feats_dir = os.path.join(data_dir, feats_dname)
 
     # raw annotations
     self.raw_video_anns, self.raw_graph_anns = self.load_raw_anns()
@@ -113,13 +113,11 @@ class BaseAPI(ABC):
         object_cnames = f_object_cnames.read().splitlines()
         relat_cnames = f_relat_cnames.read().splitlines()
 
-      with open(act_cids_path, 'r') as f_act_cids, \
-           open(sact_cids_path, 'r') as f_sact_cids:
+      with open(act_cids_path, 'r') as f_act_cids, open(sact_cids_path, 'r') as f_sact_cids:
         act_cids = json.load(f_act_cids)
         sact_cids = json.load(f_sact_cids)
 
-      with open(untrim_ids_path, 'r') as f_untrim_ids, \
-           open(trim_ids_path, 'r') as f_trim_ids:
+      with open(untrim_ids_path, 'r') as f_untrim_ids, open(trim_ids_path, 'r') as f_trim_ids:
         untrim_ids = json.load(f_untrim_ids)
         trim_ids = json.load(f_trim_ids)
 
@@ -141,12 +139,12 @@ class BaseAPI(ABC):
       aact_cnames += [aact['class'] for aact in raw_graph_ann['annotation']['atomic_actions']]
       relat_cnames += [relat['class'] for relat in raw_graph_ann['annotation']['relationships']]
 
-    act_cnames = sorted(list(set(act_cnames)))
-    sact_cnames = sorted(list(set(sact_cnames)))
-    actor_cnames = sorted(list(set(actor_cnames)))
-    object_cnames = sorted(list(set(object_cnames)))
-    aact_cnames = sorted(list(set(aact_cnames)))
-    relat_cnames = sorted(list(set(relat_cnames)))
+    act_cnames = sorted(set(act_cnames))
+    sact_cnames = sorted(set(sact_cnames))
+    actor_cnames = sorted(set(actor_cnames))
+    object_cnames = sorted(set(object_cnames))
+    aact_cnames = sorted(set(aact_cnames))
+    relat_cnames = sorted(set(relat_cnames))
 
     act_cids, sact_cids, untrim_ids, trim_ids = {}, {}, {}, {}
 
@@ -184,13 +182,11 @@ class BaseAPI(ABC):
       f_object_cnames.write('\n'.join(object_cnames))
       f_relat_cnames.write('\n'.join(relat_cnames))
 
-    with open(act_cids_path, 'w') as f_act_cids, \
-         open(sact_cids_path, 'w') as f_sact_cids:
+    with open(act_cids_path, 'w') as f_act_cids, open(sact_cids_path, 'w') as f_sact_cids:
       f_act_cids.write(json.dumps(act_cids))
       f_sact_cids.write(json.dumps(sact_cids))
 
-    with open(untrim_ids_path, 'w') as f_untrim_ids, \
-         open(trim_ids_path, 'w') as f_trim_ids:
+    with open(untrim_ids_path, 'w') as f_untrim_ids, open(trim_ids_path, 'w') as f_trim_ids:
       f_untrim_ids.write(json.dumps(untrim_ids))
       f_trim_ids.write(json.dumps(trim_ids))
 
@@ -199,9 +195,9 @@ class BaseAPI(ABC):
            act_cids, sact_cids, untrim_ids, trim_ids
 
   @staticmethod
-  def parse_bbox(bbox: Dict, size: Size) -> BBox:
-    x = [bbox['topLeft']['x'], bbox['bottomLeft']['x'], bbox['topRight']['x'], bbox['bottomRight']['x']]
-    y = [bbox['topLeft']['y'], bbox['bottomLeft']['y'], bbox['topRight']['y'], bbox['bottomRight']['y']]
+  def parse_bbox(raw_bbox: Dict, size: Size) -> BBox:
+    x = [raw_bbox['topLeft']['x'], raw_bbox['bottomLeft']['x'], raw_bbox['topRight']['x'], raw_bbox['bottomRight']['x']]
+    y = [raw_bbox['topLeft']['y'], raw_bbox['bottomLeft']['y'], raw_bbox['topRight']['y'], raw_bbox['bottomRight']['y']]
 
     x1 = max(round(min(x)), 0)
     y1 = max(round(min(y)), 0)
@@ -211,54 +207,106 @@ class BaseAPI(ABC):
     return BBox(x1, y1, w, h)
 
   @staticmethod
-  def parse_size(size: dict) -> Size:
-    return Size(size['width'], size['height'])
+  def parse_size(raw_size: dict) -> Size:
+    return Size(raw_size['width'], raw_size['height'])
 
-  def parse_actor(self, actor: Dict, size: Size) -> Entity:
-    cid = self.actor_cnames.index(actor['class'])
-    iid = actor['id_in_video']
-    bbox = self.parse_bbox(actor['bbox'], size)
-
-    return Entity(cid, iid, bbox)
-
-  def parse_object(self, object: Dict, size: Size) -> Entity:
-    cid = self.object_cnames.index(object['class'])
-    iid = object['id_in_video']
-    bbox = self.parse_bbox(object['bbox'], size)
+  def parse_actor(self, raw_actor: Dict, size: Size) -> Entity:
+    cid = self.actor_cnames.index(raw_actor['class'])
+    iid = raw_actor['id_in_video']
+    bbox = self.parse_bbox(raw_actor['bbox'], size)
 
     return Entity(cid, iid, bbox)
 
-  def parse_relat(self, relat: Dict) -> Relationship:
-    cname = relat['class']
-    description = relat['description']
+  def parse_object(self, raw_object: Dict, size: Size) -> Entity:
+    cid = self.object_cnames.index(raw_object['class'])
+    iid = raw_object['id_in_video']
+    bbox = self.parse_bbox(raw_object['bbox'], size)
+
+    return Entity(cid, iid, bbox)
+
+  def parse_relat(self, raw_relat: Dict) -> Relat:
+    cname = raw_relat['class']
+    description = raw_relat['description']
 
     cid = self.relat_cnames.index(cname)
     src_iids, snk_iids = description[1:-1].split('),(')
-    src_iids = set(src_iids.split(','))
-    snk_iids = set(snk_iids.split(','))
+    src_iids = sorted(src_iids.split(','))
+    snk_iids = sorted(snk_iids.split(','))
 
-    return Relationship(cid, src_iids, snk_iids)
-
-  def parse_aact(self, aact: Dict) -> AAct:
-    cid = self.aact_cnames.index(aact['class']),
-    actor_iids = set(aact['actor_id'].split(','))
-
-    return AAct(cid, actor_iids)
+    return Relat(cid, src_iids, snk_iids)
 
   def parse_ag(self, raw_graph_ann):
     size = self.parse_size(raw_graph_ann['frame_dim'])
-    aacts = [self.parse_aact(aact) for aact in raw_graph_ann['annotation']['atomic_actions']]
-    actors = [self.parse_actor(actor, size) for actor in raw_graph_ann['annotation']['actors']]
-    objects = [self.parse_object(object, size) for object in raw_graph_ann['annotation']['objects']]
-    relats = [self.parse_relat(relat) for relat in raw_graph_ann['annotation']['relationships']]
-    ag = AG(aacts, actors, objects, relats)
+    actors = set([self.parse_actor(raw_actor, size) for raw_actor in raw_graph_ann['annotation']['actors']])
+    objects = set([self.parse_object(raw_object, size) for raw_object in raw_graph_ann['annotation']['objects']])
+    relats = set([self.parse_relat(raw_relat) for raw_relat in raw_graph_ann['annotation']['relationships']])
+    ag = AG(actors, objects, relats)
 
     # sanity check
-    actor_iids = set([actor['id_in_video'] for actor in raw_graph_ann['annotation']['actors']])
-    object_iids = set([object['id_in_video'] for object in raw_graph_ann['annotation']['objects']])
-    entity_iids = actor_iids.union(object_iids)
-    assert all([aact.actor_iids.issubset(actor_iids) for aact in ag.aacts]), [aact.actor_iids.issubset(actor_iids) for aact in ag.aacts]
-    assert all([relat.src_iids.issubset(entity_iids) for relat in relats])
-    assert all([relat.snk_iids.issubset(entity_iids) for relat in relats])
+    actor_iids = sorted([actor['id_in_video'] for actor in raw_graph_ann['annotation']['actors']])
+    object_iids = sorted([object['id_in_video'] for object in raw_graph_ann['annotation']['objects']])
+    assert all([set(relat.src_iids).issubset(set(actor_iids+object_iids)) for relat in relats])
+    assert all([set(relat.snk_iids).issubset(set(actor_iids+object_iids)) for relat in relats])
 
     return ag
+
+  @staticmethod
+  def decode_aact(encoded_aact: np.int64, n: int=2) -> Union[List[int], int]:
+    """
+     - actor absent: -2
+     - actor present + inactive: -1
+     - actor present + active: a sorted list of aact_cids
+    """
+    assert encoded_aact >= -2
+    if encoded_aact < 0:
+      return encoded_aact
+    else:
+      decoded_aact = sorted(set([int(str(encoded_aact)[max(i-n, 0):i])
+                                 for i in reversed(range(len(str(encoded_aact)), 0, -n))]))
+      return decoded_aact
+
+  @staticmethod
+  def encode_aact(decoded_aact: Union[List[int], int], n: int=2) -> np.int64:
+    if isinstance(decoded_aact, int):
+      assert decoded_aact == -1 or decoded_aact == 0
+      return decoded_aact
+    else:
+      assert all([x >= 0 and len(str(x)) <= n for x in decoded_aact])
+      encoded_aact = np.int64(''.join([str(x).zfill(n) for x in sorted(set(decoded_aact))]))
+      return encoded_aact
+
+  def add_encoded_aact(self, encoded_aact: np.int64, aact_cid: int):
+    assert encoded_aact >= -1, encoded_aact  # present
+    if encoded_aact == -1:  # first atomic action
+      return aact_cid
+    else:  # more than 1 atomic action
+      decoded_aact = sorted(set(self.decode_aact(encoded_aact)+[aact_cid]))
+      encoded_aact = self.encode_aact(decoded_aact)
+      return encoded_aact
+
+  def parse_aact(self, raw_aact: List[List[Dict]], ags: List[AG]) -> AAct:
+    assert len(raw_aact) == len(ags)
+    num_frames = len(raw_aact)
+    actor_iids = sorted(set(chain(*[ag.actor_iids for ag in ags])))
+    aacts_actor_iids = sorted(set(chain(*[y['actor_id'].split(',') for x in raw_aact for y in x])))
+    assert set(aacts_actor_iids).issubset(set(aacts_actor_iids))
+    num_actors = len(actor_iids)
+    tracklets = -2*np.ones((num_actors, num_frames), dtype=np.int64)  # absent
+
+    # encoded_aact = tracklets[i, j] is the encoded atomic action for actor actor_iids[i] in frame j
+    for j, x in enumerate(raw_aact):
+      # present
+      j_pst_actor_iids = ags[j].actor_iids
+      j_pst_actor_indices = [actor_iids.index(actor_iid) for actor_iid in j_pst_actor_iids]
+      tracklets[j_pst_actor_indices, j] = -1
+
+      # present + active
+      j_aact_cids = [self.aact_cnames.index(y['class']) for y in x]
+      j_pst_atv_actor_iids_list = [y['actor_id'].split(',') for y in x]
+
+      for j_aact_cid, j_pst_atv_actor_iids in zip(j_aact_cids, j_pst_atv_actor_iids_list):
+        j_pst_atv_actor_indices = [actor_iids.index(actor_iid) for actor_iid in j_pst_atv_actor_iids]
+        for i in j_pst_atv_actor_indices:
+          tracklets[i, j] = self.add_encoded_aact(tracklets[i, j], j_aact_cid)
+
+    return AAct(actor_iids, tracklets)

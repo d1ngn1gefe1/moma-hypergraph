@@ -8,7 +8,7 @@ def cat_vl(tensor_list):
   :param tensor_list: a list of tensors of varying tensor.shape[0] but same tensor.shape[1:]
   :return: a concatenated tensor and chunk sizes
   """
-  chunk_sizes = torch.Tensor([tensor.shape[0] for tensor in tensor_list])
+  chunk_sizes = torch.IntTensor([tensor.shape[0] for tensor in tensor_list])
   tensor = torch.cat(tensor_list, dim=0)
   return tensor, chunk_sizes
 

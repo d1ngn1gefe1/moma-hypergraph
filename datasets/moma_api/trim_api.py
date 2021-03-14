@@ -6,37 +6,46 @@ from .base_api import BaseAPI
 class TrimAPI(BaseAPI):
   def __init__(self, data_dir):
     super().__init__(data_dir)
-    self._anns = self.load_anns()
-    self.trim_ids = sorted(self._anns.keys())
+    self._trim_anns = self.load_anns()
+    self.trim_ids = sorted(self._trim_anns.keys())
 
   def load_anns(self):
     """
     Return
-      - anns: a dict trim_id -> {
+      - trim_anns: a dict trim_id -> {
         size: Size
         fps: float
         ags: List[AG]
+        aact: AAct
       }
     """
-    anns = {}
+    trim_anns = {}
+    raw_aacts = {}
 
     for raw_graph_ann in self.raw_graph_anns:
       trim_id = raw_graph_ann['trim_video_id']
       ag = self.parse_ag(raw_graph_ann)
+      raw_aact = raw_graph_ann['annotation']['atomic_actions']
 
-      if trim_id not in anns:
-        anns[trim_id] = {
+      if trim_id not in trim_anns:  # trim_id not in raw_aacts
+        trim_anns[trim_id] = {
           'size': self.parse_size(raw_graph_ann['frame_dim']),
           'fps': raw_graph_ann['fps'],
           'ags': [ag]
         }
+        raw_aacts[trim_id] = [raw_aact]
       else:
-        anns[trim_id]['ags'].append(ag)
+        trim_anns[trim_id]['ags'].append(ag)
+        raw_aacts[trim_id].append(raw_aact)
 
-    return anns
+    # parse atomic actions
+    for trim_id in list(trim_anns.keys()):
+      trim_anns[trim_id]['aact'] = self.parse_aact(raw_aacts[trim_id], trim_anns[trim_id]['ags'])
+
+    return trim_anns
 
   def get_ann(self, trim_id):
-    return self._anns[trim_id]
+    return self._trim_anns[trim_id]
 
   def get_video_path(self, trim_id, sample):
     if sample:
