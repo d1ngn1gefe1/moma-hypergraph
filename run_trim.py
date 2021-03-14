@@ -24,14 +24,16 @@ def main():
   cfg = parser.parse_args()
 
   dataset_train = datasets.MOMATrim(cfg, 'train', ('feat',))
-  trim_id, trim_ann, feat = next(iter(dataset_train))
+  # trim_id, trim_ann, feat = next(iter(dataset_train))
+  for trim_id, trim_ann, feat in dataset_train:
+    print(trim_id, feat.shape[0])
+    num_nodes = sum([ag.num_nodes for ag in trim_ann['ags']])
+    if num_nodes != feat.shape[0]:
+      print('{} vs. {}'.format(num_nodes, feat.shape[0]))
 
-  print(feat.shape)
+      print(trim_ann['ags'])
 
-  num_nodes = 0
-  for ag in trim_ann['ags']:
-    num_nodes += ag.num_nodes
-  print(num_nodes)
+      assert False
 
 
   # dataset_val = datasets.MOMATrim(cfg, fetch=('feat',))

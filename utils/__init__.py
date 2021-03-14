@@ -1,4 +1,4 @@
-from .data import collate_fn, cat_vl, split_vl
+from .data_proc import collate_fn, cat_vl, split_vl
 from .logger import Logger
 from .metric import accuracy
 

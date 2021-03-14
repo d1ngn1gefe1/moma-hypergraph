@@ -92,6 +92,9 @@ class Entity:
     if not is_actor(self.iid) and not is_object(self.iid):
       raise ValueError
 
+  def __lt__(self, other):
+    return self.iid < other.iid
+
   def __eq__(self, other):
     return self.__class__ == other.__class__ \
            and self.cid == other.cid and self.iid == other.iid and self.bbox == other.bbox
@@ -123,6 +126,8 @@ class Relat:
     if any([not (is_actor(src_iid) or is_object(src_iid)) for src_iid in self.src_iids]) or \
        any([not (is_actor(snk_iid) or is_object(snk_iid)) for snk_iid in self.snk_iids]):
       raise ValueError
+    if self.src_iids != sorted(self.src_iids) or self.snk_iids != sorted(self.snk_iids):
+      raise ValueError
 
   def __repr__(self):
     return f'Relat(cid={self.cid}), {self.src_iids}->{self.snk_iids}'
@@ -137,19 +142,21 @@ class Relat:
 
 @dataclass
 class AG:
-  actors: Set[Entity]
-  objects: Set[Entity]
+  actors: List[Entity]
+  objects: List[Entity]
   relats: Set[Relat]
 
   def __post_init__(self):
     if not set(self.relat_entity_iids).issubset(set(self.actor_iids+self.object_iids)):
       raise ValueError
+    if self.actors != sorted(self.actors) or self.objects != sorted(self.objects):
+      raise ValueError
 
   def __repr__(self):
     message = (
         f'AG(\n'
-        f'\tactors={list(self.actors)}\n'
-        f'\tobjects={list(self.objects)}\n'
+        f'\tactors={self.actors}\n'
+        f'\tobjects={self.objects}\n'
         f'\trelats={list(self.relats)}\n'
         f')'
     )
@@ -161,11 +168,11 @@ class AG:
 
   @property
   def actor_iids(self):
-    return sorted([actor.iid for actor in self.actors])
+    return [actor.iid for actor in self.actors]  # already sorted
 
   @property
   def object_iids(self):
-    return sorted([object.iid for object in self.objects])
+    return [object.iid for object in self.objects]  # already sorted
 
   @property
   def num_nodes(self):
@@ -176,8 +183,8 @@ class AG:
     return len(self.relats)
 
   def resize(self, scale: float):
-    return AG(set([actor.resize(scale) for actor in self.actors]),
-              set([object.resize(scale) for object in self.objects]),
+    return AG([actor.resize(scale) for actor in self.actors],
+              [object.resize(scale) for object in self.objects],
               self.relats)
 
 
@@ -189,6 +196,8 @@ class AAct:
 
   def __post_init__(self):
     if not all(is_actor(actor_iid) for actor_iid in self.actor_iids):
+      raise ValueError
+    if self.actor_iids != sorted(self.actor_iids):
       raise ValueError
 
   def __repr__(self):

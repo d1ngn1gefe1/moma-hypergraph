@@ -34,18 +34,8 @@ class MOMATrim(datasets.VisionDataset):
       all_trim_ids = f.read().splitlines()
     all_feats = utils.split_vl(all_feats, chunk_sizes)
 
-    import time
-
-    tm = time.time()
     indices = [all_trim_ids.index(trim_id) for trim_id in self.trim_ids]
     feats = [all_feats[index] for index in indices]
-    print('1: {}'.format(time.time()-tm))
-    tm = time.time()
-    feats = []
-    for trim_id in self.trim_ids:
-      index = all_trim_ids.index(trim_id)
-      feats.append(all_feats[index])
-    print('2: {}'.format(time.time()-tm))
 
     return feats
 

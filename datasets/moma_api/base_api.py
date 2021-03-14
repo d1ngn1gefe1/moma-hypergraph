@@ -252,8 +252,8 @@ class BaseAPI(ABC):
 
   def parse_ag(self, raw_graph_ann):
     size = self.parse_size(raw_graph_ann['frame_dim'])
-    actors = set([self.parse_actor(raw_actor, size) for raw_actor in raw_graph_ann['annotation']['actors']])
-    objects = set([self.parse_object(raw_object, size) for raw_object in raw_graph_ann['annotation']['objects']])
+    actors = sorted(set([self.parse_actor(raw_actor, size) for raw_actor in raw_graph_ann['annotation']['actors']]))
+    objects = sorted(set([self.parse_object(raw_object, size) for raw_object in raw_graph_ann['annotation']['objects']]))
     relats = set([self.parse_relat(raw_relat) for raw_relat in raw_graph_ann['annotation']['relationships']])
     ag = AG(actors, objects, relats)
 

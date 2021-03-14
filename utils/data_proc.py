@@ -38,7 +38,7 @@ def collate_fn(batch):
   raise TypeError
 
 
-# def to_geometric(ag, subactivity_cid, num_actor_classes, num_object_classes, num_relat_classes):
+# def to_pyg_data(ag, subactivity_cid, num_actor_classes, num_object_classes, num_relat_classes):
 #   actor_cids =
 #   entity_cids = [actor['cid'] for actor in ag['actors']]+ \
 #               [object['cid']+num_actor_classes for object in ag['objects']]
