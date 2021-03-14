@@ -27,7 +27,7 @@ class BaseAPI(ABC):
    - cname: class name
   """
   def __init__(self, data_dir, anns_dname='anns', untrim_dname='untrim_videos', trim_dname='trim_videos',
-               trim_sample_dname='trim_sample_videos', feats_dname='feats'):
+               trim_sample_dname='trim_sample_videos', feats_dname='feats', split_dname='split_by_trim'):
     # directories
     self.anns_dir = os.path.join(data_dir, anns_dname)
     self.untrim_dir = os.path.join(data_dir, untrim_dname)
@@ -43,6 +43,9 @@ class BaseAPI(ABC):
         self.actor_cnames, self.object_cnames, self.relat_cnames, \
         self.act_cids, self.sact_cids, self.untrim_ids, self.trim_ids = self.create_indices()
 
+    # splits
+    self.split_train, self.split_val = self.load_splits(split_dname)
+
   def load_raw_anns(self, video_fname='video_anns.json', graph_fname='graph_anns.json'):
     """
     Load annotations
@@ -54,6 +57,18 @@ class BaseAPI(ABC):
       raw_graph_anns = json.load(f)
 
     return raw_video_anns, raw_graph_anns
+
+  def load_splits(self, split_dname, train_fname='train.txt', val_fname='val.txt'):
+    with open(os.path.join(self.anns_dir, split_dname, train_fname), 'r') as f_train, \
+         open(os.path.join(self.anns_dir, split_dname, val_fname), 'r') as f_val:
+      split_train = f_train.read().splitlines()
+      split_val = f_val.read().splitlines()
+
+    assert sorted(split_train+split_val) == sorted(self.sact_cids.keys())
+    print('{}: len(train) = {}, len(val) = {}'.format(split_dname.replace('_', ' ').capitalize(),
+                                                      len(split_train), len(split_val)))
+
+    return split_train, split_val
 
   @staticmethod
   def get_frame_id(raw_graph_ann):
@@ -98,7 +113,7 @@ class BaseAPI(ABC):
                                      actor_cnames_path, object_cnames_path, relat_cnames_path,
                                      act_cids_path, sact_cids_path,
                                      untrim_ids_path, trim_ids_path]))):
-      print('Load indices')
+      print('Load MOMA API indices')
       
       with open(act_cnames_path, 'r') as f_act_cnames, \
            open(sact_cnames_path, 'r') as f_sact_cnames, \
@@ -168,7 +183,7 @@ class BaseAPI(ABC):
       if frame_id not in trim_ids:
         trim_ids[frame_id] = trim_id
 
-    print('Generate indices')
+    print('Generate MOMA API indices')
     with open(act_cnames_path, 'w') as f_act_cnames, \
          open(sact_cnames_path, 'w') as f_sact_cnames, \
          open(aact_cnames_path, 'w') as f_aact_cnames, \

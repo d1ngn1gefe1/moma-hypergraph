@@ -7,7 +7,6 @@ class TrimAPI(BaseAPI):
   def __init__(self, data_dir):
     super().__init__(data_dir)
     self._trim_anns = self.load_anns()
-    self.trim_ids = sorted(self._trim_anns.keys())
 
   def load_anns(self):
     """
@@ -43,6 +42,16 @@ class TrimAPI(BaseAPI):
       trim_anns[trim_id]['aact'] = self.parse_aact(raw_aacts[trim_id], trim_anns[trim_id]['ags'])
 
     return trim_anns
+
+  def get_trim_ids(self, split=None):
+    if split is None:
+      return sorted(self._trim_anns.keys())
+    elif split == 'train':
+      return self.split_train
+    elif split == 'val':
+      return self.split_val
+    else:
+      raise ValueError
 
   def get_ann(self, trim_id):
     return self._trim_anns[trim_id]

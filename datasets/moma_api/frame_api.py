@@ -5,7 +5,6 @@ class FrameAPI(BaseAPI):
   def __init__(self, data_dir):
     super().__init__(data_dir)
     self._anns = self.load_anns()
-    self.frame_ids = sorted(self._anns.keys())
 
   def load_anns(self):
     """
@@ -27,6 +26,9 @@ class FrameAPI(BaseAPI):
       }
 
     return anns
+
+  def get_frame_ids(self):
+    return sorted(self._anns.keys())
 
   def get_ann(self, frame_id):
     return self._anns[frame_id]
