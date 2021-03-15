@@ -7,8 +7,8 @@ import utils
 class Trainer:
   def __init__(self, cfg):
     self.cfg = cfg
-    self.device = torch.device('cuda:{}'.format(self.cfg.gpu) if torch.cuda.is_available() else 'cpu')
-    self.logger = utils.Logger(self.cfg.save_dir, cfg)
+    self.device = torch.device('cuda:{}'.format(cfg.gpu) if torch.cuda.is_available() else 'cpu')
+    self.logger = utils.Logger(cfg.save_dir, cfg)
 
   def fit(self, model, dataset_train, dataset_val):
     dataloader_train = DataLoader(dataset_train, batch_size=self.cfg.batch_size, shuffle=True,

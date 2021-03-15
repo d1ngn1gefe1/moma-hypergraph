@@ -13,7 +13,7 @@ class MOMATrim(datasets.VisionDataset):
 
     self.cfg = cfg
     self.fetch = fetch
-    self.api = get_moma_api(cfg.data_dir, 'trim')
+    self.api = get_moma_api(cfg.data_dir, cfg.split, 'trim')
     self.trim_ids = self.api.get_trim_ids(split=split)
 
     if self.fetch == 'pyg':
