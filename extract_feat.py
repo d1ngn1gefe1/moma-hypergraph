@@ -111,7 +111,7 @@ parser.add_argument('--batch_size', default=50, type=int)
 def main():
   cfg = parser.parse_args()
   model = FeatExtractorModel()
-  dataset = datasets.MOMATrim(cfg, split=None, fetch=('video',))
+  dataset = datasets.MOMATrim(cfg, split=None, fetch='video')
   feat_extractor = FeatExtractor(cfg)
   feat_extractor.fit(model, dataset)
 

@@ -245,8 +245,8 @@ class BaseAPI(ABC):
 
     cid = self.relat_cnames.index(cname)
     src_iids, snk_iids = description[1:-1].split('),(')
-    src_iids = sorted(src_iids.split(','))
-    snk_iids = sorted(snk_iids.split(','))
+    src_iids = sorted(set(src_iids.split(',')))
+    snk_iids = sorted(set(snk_iids.split(',')))
 
     return Relat(cid, src_iids, snk_iids)
 
@@ -258,8 +258,8 @@ class BaseAPI(ABC):
     ag = AG(actors, objects, relats)
 
     # sanity check
-    actor_iids = sorted([actor['id_in_video'] for actor in raw_graph_ann['annotation']['actors']])
-    object_iids = sorted([object['id_in_video'] for object in raw_graph_ann['annotation']['objects']])
+    actor_iids = sorted(set([actor['id_in_video'] for actor in raw_graph_ann['annotation']['actors']]))
+    object_iids = sorted(set([object['id_in_video'] for object in raw_graph_ann['annotation']['objects']]))
     assert all([set(relat.src_iids).issubset(set(actor_iids+object_iids)) for relat in relats])
     assert all([set(relat.snk_iids).issubset(set(actor_iids+object_iids)) for relat in relats])
 

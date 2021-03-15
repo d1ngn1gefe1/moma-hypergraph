@@ -70,9 +70,11 @@ def main5():
   num_edges = 5
 
   x = np.ones((num_nodes, num_features))
-  edge_index = np.random.randint(0, num_nodes, (num_edges, num_features))
-  data = Data(x=torch.from_numpy(x), edge_index=torch.from_numpy(edge_index))
-  dataloader = DataLoader([data, data], batch_size=2)
+  edge_index = np.random.randint(0, num_nodes, (2, num_features))
+  data1 = Data(x=torch.from_numpy(x), edge_index=torch.from_numpy(edge_index))
+  data2 = Data(x=torch.from_numpy(x), edge_index=torch.LongTensor(2, 0))
+  data3 = data1
+  dataloader = DataLoader([data1, data2, data3], batch_size=3)
   batch = next(iter(dataloader))
   print(edge_index)
 
@@ -81,27 +83,27 @@ def main5():
   print(batch.edge_index)
   print(batch.batch)
 
-  print('\n')
-
-  batch = Batch.from_data_list([data, data])
-  print(batch)
-  print(batch.x)
-  print(batch.edge_index)
-  print(batch.batch)
-
-  print('\n')
-
-  print(batch.batch)
-  setattr(data, 'batch_inner', data.batch)
-  delattr(batch, 'batch')
-
-  batch2d = Batch.from_data_list([batch, batch])
-  print(batch2d)
-  print(batch2d.x)
-  print(batch2d.edge_index)
-  print(batch2d.batch)
-
-  print('\n')
+  # print('\n')
+  #
+  # batch = Batch.from_data_list([data, data])
+  # print(batch)
+  # print(batch.x)
+  # print(batch.edge_index)
+  # print(batch.batch)
+  #
+  # print('\n')
+  #
+  # print(batch.batch)
+  # setattr(data, 'batch_inner', data.batch)
+  # delattr(batch, 'batch')
+  #
+  # batch2d = Batch.from_data_list([batch, batch])
+  # print(batch2d)
+  # print(batch2d.x)
+  # print(batch2d.edge_index)
+  # print(batch2d.batch)
+  #
+  # print('\n')
 
 
 def main6():
@@ -126,4 +128,4 @@ def main6():
 
 
 if __name__ == '__main__':
-  main6()
+  main5()

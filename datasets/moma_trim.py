@@ -8,7 +8,7 @@ import utils
 
 
 class MOMATrim(datasets.VisionDataset):
-  def __init__(self, cfg, split=None, fetch=()):
+  def __init__(self, cfg, split=None, fetch=None):
     super(MOMATrim, self).__init__(cfg.data_dir)
 
     self.cfg = cfg
@@ -16,14 +16,22 @@ class MOMATrim(datasets.VisionDataset):
     self.api = get_moma_api(cfg.data_dir, 'trim')
     self.trim_ids = self.api.get_trim_ids(split=split)
 
-    if 'feat' in self.fetch:
+    if self.fetch == 'pyg':
       self.feats = self.load_feats()
+
+    self.add_cfg()
+
+  def add_cfg(self):
+    self.cfg.num_sacts = len(self.api.sact_cnames)
+    if self.fetch == 'pyg':
+      self.cfg.num_feats = self.feats[0].shape[1]
 
   @staticmethod
   def resize(video, trim_ann, scale=0.5):
     h, w = video.shape[-2:]
     video = F.resize(video, [round(h*scale), round(w*scale)])
     trim_ann['ags'] = [ag.resize(scale) for ag in trim_ann['ags']]
+    trim_ann['size'] = trim_ann['size'].resize(scale)
 
     return video, trim_ann
 
@@ -42,9 +50,8 @@ class MOMATrim(datasets.VisionDataset):
   def __getitem__(self, index):
     trim_id = self.trim_ids[index]
     trim_ann = self.api.get_ann(trim_id)
-    out = [trim_id, trim_ann]
 
-    if 'video' in self.fetch:
+    if self.fetch == 'video':
       video_path = self.api.get_video_path(trim_id, True)
       video = io.read_video(video_path, pts_unit='sec')[0]
       video = video.float().permute(0, 3, 1, 2)/255.  # to_tensor
@@ -52,14 +59,16 @@ class MOMATrim(datasets.VisionDataset):
       # reduce size when width > 2000
       if video.shape[-1] > 2000:
         video, trim_ann = self.resize(video, trim_ann)
-        out[1] = trim_ann
 
-      out.append(video)
-    elif 'feat' in self.fetch:
+      return trim_id, trim_ann, video
+
+    elif self.fetch == 'pyg':
       feat = self.feats[index]
-      out.append(feat)
+      data = utils.to_pyg_data(trim_ann, feat, self.api.sact_cids[trim_id])
+      return data
 
-    return tuple(out)
+    else:
+      return trim_id, trim_ann
 
   def __len__(self):
     return len(self.trim_ids)

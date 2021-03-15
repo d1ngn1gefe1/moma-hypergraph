@@ -11,37 +11,33 @@ class Trainer:
     self.logger = utils.Logger(self.cfg.save_dir, cfg)
 
   def fit(self, model, dataset_train, dataset_val):
-    # model = model.to(self.device)
+    model = model.to(self.device)
     dataloader_train = DataLoader(dataset_train, batch_size=self.cfg.batch_size, shuffle=True,
                                   collate_fn=utils.collate_fn)
-    # dataloader_val = DataLoader(dataset_val, batch_size=self.cfg.batch_size, shuffle=False,
-    #                             collate_fn=utils.collate_fn)
-    # optimizer = model.get_optimizer()
+    dataloader_val = DataLoader(dataset_val, batch_size=self.cfg.batch_size, shuffle=False,
+                                collate_fn=utils.collate_fn)
+    optimizer = model.get_optimizer()
 
     for epoch in range(self.cfg.num_epochs):
-      # model.train()
-
+      model.train()
       for i, batch in enumerate(dataloader_train):
-        print(batch)
-        assert False
+        batch = batch.to(self.device)
+        loss, acc = model(batch)
 
-        # batch = batch.to(self.device)
-        # loss, acc = model.step(batch)
-        #
-        # optimizer.zero_grad()
-        # loss.backward()
-        # optimizer.step()
-        #
-        # stats = {'loss': loss.item(), 'acc': acc.item()}
-        # self.logger.update(batch.num_graphs, stats, 'train')
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-      # model.eval()
-      # with torch.no_grad():
-      #   for i, batch in enumerate(dataloader_val):
-      #     batch = batch.to(self.device)
-      #     loss, acc = model.step(batch)
-      #
-      #     stats = {'loss': loss.item(), 'acc': acc.item()}
-      #     self.logger.update(batch.num_graphs, stats, 'val')
-      #
-      # self.logger.summarize(epoch)
+        stats = {'loss': loss.item(), 'acc': acc.item()}
+        self.logger.update(batch.num_graphs, stats, 'train')
+
+      model.eval()
+      with torch.no_grad():
+        for i, batch in enumerate(dataloader_val):
+          batch = batch.to(self.device)
+          loss, acc = model(batch)
+
+          stats = {'loss': loss.item(), 'acc': acc.item()}
+          self.logger.update(batch.num_graphs, stats, 'val')
+
+      self.logger.summarize(epoch)

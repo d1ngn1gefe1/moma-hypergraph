@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from itertools import chain
+from itertools import chain, product
 import numpy as np
+import torch
 from typing import Dict, List, Set, Tuple
 
 
@@ -62,6 +63,9 @@ class Size:
   w: int
   h: int
 
+  def resize(self, scale: float):
+    return Size(round(self.w*scale), round(self.h*scale))
+
 
 @dataclass
 class BBox:
@@ -69,6 +73,10 @@ class BBox:
   y1: int
   w: int
   h: int
+
+  def __post_init__(self):
+    if self.w <= 0 or self.h <= 0:
+      raise ValueError
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ \
@@ -89,6 +97,7 @@ class Entity:
   bbox: BBox
 
   def __post_init__(self):
+    # wrong iid format
     if not is_actor(self.iid) and not is_object(self.iid):
       raise ValueError
 
@@ -96,11 +105,10 @@ class Entity:
     return self.iid < other.iid
 
   def __eq__(self, other):
-    return self.__class__ == other.__class__ \
-           and self.cid == other.cid and self.iid == other.iid and self.bbox == other.bbox
+    return self.__class__ == other.__class__ and self.iid == other.iid
 
   def __hash__(self):
-    return hash((self.cid, self.iid, self.bbox))
+    return hash(self.iid)
 
   def resize(self, scale: float):
     return Entity(self.cid, self.iid, self.bbox.resize(scale))
@@ -123,10 +131,15 @@ class Relat:
   snk_iids: List[str]
 
   def __post_init__(self):
+    # wrong iid format
     if any([not (is_actor(src_iid) or is_object(src_iid)) for src_iid in self.src_iids]) or \
        any([not (is_actor(snk_iid) or is_object(snk_iid)) for snk_iid in self.snk_iids]):
+      print('src_iids={}, snk_iids={}'.format(self.src_iids, self.snk_iids))
       raise ValueError
-    if self.src_iids != sorted(self.src_iids) or self.snk_iids != sorted(self.snk_iids):
+
+    # not in order or duplicate
+    if self.src_iids != sorted(set(self.src_iids)) or self.snk_iids != sorted(set(self.snk_iids)):
+      print('src_iids={}, snk_iids={}'.format(self.src_iids, self.snk_iids))
       raise ValueError
 
   def __repr__(self):
@@ -149,7 +162,10 @@ class AG:
   def __post_init__(self):
     if not set(self.relat_entity_iids).issubset(set(self.actor_iids+self.object_iids)):
       raise ValueError
-    if self.actors != sorted(self.actors) or self.objects != sorted(self.objects):
+
+    # not in order or duplicate
+    if self.actors != sorted(set(self.actors)) or self.objects != sorted(set(self.objects)):
+      print('actors={}, objects={}'.format(self.actors, self.objects))
       raise ValueError
 
   def __repr__(self):
@@ -175,12 +191,49 @@ class AG:
     return [object.iid for object in self.objects]  # already sorted
 
   @property
+  def entity_iids(self):
+    return self.actor_iids+self.object_iids  # same order as feat
+
+  @property
+  def actor_cids(self):
+    return [actor.cid for actor in self.actors]
+
+  @property
+  def object_cids(self):
+    return [object.cid for object in self.objects]
+
+  @property
+  def entity_cids(self):
+    return self.actor_cids+self.object_cids
+
+  @property
   def num_nodes(self):
     return len(self.actors)+len(self.objects)
 
   @property
   def num_edges(self):
     return len(self.relats)
+
+  @property
+  def pairwise_edges(self):
+    entity_iids = self.entity_iids
+    edge_index = []
+    edge_label = []
+
+    for relat in self.relats:
+      src_indices = [entity_iids.index(iid) for iid in relat.src_iids]
+      snk_indices = [entity_iids.index(iid) for iid in relat.snk_iids]
+      edge_index.append(torch.LongTensor(list(product(src_indices, snk_indices))).T)
+      edge_label += [relat.cid]*len(src_indices)*len(snk_indices)
+
+    if len(edge_index) == 0:
+      edge_index = torch.LongTensor(2, 0)
+      edge_label = None
+    else:
+      edge_index = torch.cat(edge_index, dim=1)
+      edge_label = torch.LongTensor(edge_label)
+
+    return edge_index, edge_label
 
   def resize(self, scale: float):
     return AG([actor.resize(scale) for actor in self.actors],
@@ -211,7 +264,7 @@ class AAct:
     return message
 
   def get_multilabels(self, per_frame: bool) -> np.ndarray:
-    multilabels = np.zeros((self.tracklets.shape[1], self.num_classes), dtype=np.int32)
+    multilabels = np.zeros((self.tracklets.shape[1], self.num_classes), dtype=np.int64)
 
     for j in range(self.tracklets.shape[1]):
       cids = sorted(set(chain(*[decode_aact(encoded_aact) for encoded_aact in self.tracklets[:, j]])))
