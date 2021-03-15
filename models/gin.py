@@ -8,7 +8,7 @@ import utils
 
 
 class GIN(nn.Module):
-  def __init__(self, num_feats, num_classes, dim=32):
+  def __init__(self, num_feats, num_classes, dim=256):
     super(GIN, self).__init__()
 
     nn1 = nn.Sequential(nn.Linear(num_feats, dim), nn.ReLU(), nn.Linear(dim, dim))
@@ -45,11 +45,15 @@ class GINModel(nn.Module):
     super(GINModel, self).__init__()
 
     self.cfg = cfg
-    self.net = GIN(num_feats=self.cfg.num_feats, num_classes=self.cfg.num_sacts)
+    self.net = GIN(num_feats=self.cfg.num_feats, num_classes=self.cfg.num_classes)
 
   def get_optimizer(self):
     optimizer = optim.Adam(self.net.parameters(), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay)
     return optimizer
+
+  def get_scheduler(self, optimizer):
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, self.cfg.num_epochs)
+    return scheduler
 
   def forward(self, data):
     logits = self.net.forward(data.x, data.edge_index, data.batch)

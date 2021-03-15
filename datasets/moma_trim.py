@@ -19,12 +19,17 @@ class MOMATrim(datasets.VisionDataset):
     if self.fetch == 'pyg':
       self.feats = self.load_feats()
 
-    self.add_cfg()
+    if split == 'train':
+      self.add_cfg()
 
   def add_cfg(self):
-    self.cfg.num_sacts = len(self.api.sact_cnames)
+    if self.cfg.task == 'act':
+      setattr(self.cfg, 'num_classes', len(self.api.act_cnames))
+    else:  # 'sact
+      setattr(self.cfg, 'num_classes', len(self.api.sact_cnames))
+
     if self.fetch == 'pyg':
-      self.cfg.num_feats = self.feats[0].shape[1]
+      setattr(self.cfg, 'num_feats', self.feats[0].shape[1])
 
   @staticmethod
   def resize(video, trim_ann, scale=0.5):
@@ -64,7 +69,12 @@ class MOMATrim(datasets.VisionDataset):
 
     elif self.fetch == 'pyg':
       feat = self.feats[index]
-      data = utils.to_pyg_data(trim_ann, feat, self.api.sact_cids[trim_id])
+      if self.cfg.task == 'act':
+        untrim_id = self.api.untrim_ids[trim_id]
+        y = self.api.act_cids[untrim_id]
+      else:  # 'sact'
+        y = self.api.sact_cids[trim_id]
+      data = utils.to_pyg_data(trim_ann, feat, y)
       return data
 
     else:

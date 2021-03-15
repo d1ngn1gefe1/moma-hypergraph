@@ -11,14 +11,17 @@ class Trainer:
     self.logger = utils.Logger(self.cfg.save_dir, cfg)
 
   def fit(self, model, dataset_train, dataset_val):
-    model = model.to(self.device)
     dataloader_train = DataLoader(dataset_train, batch_size=self.cfg.batch_size, shuffle=True,
                                   collate_fn=utils.collate_fn)
     dataloader_val = DataLoader(dataset_val, batch_size=self.cfg.batch_size, shuffle=False,
                                 collate_fn=utils.collate_fn)
     optimizer = model.get_optimizer()
+    scheduler = model.get_scheduler(optimizer)
+
+    model = model.to(self.device)
 
     for epoch in range(self.cfg.num_epochs):
+      # train
       model.train()
       for i, batch in enumerate(dataloader_train):
         batch = batch.to(self.device)
@@ -28,16 +31,22 @@ class Trainer:
         loss.backward()
         optimizer.step()
 
-        stats = {'loss': loss.item(), 'acc': acc.item()}
-        self.logger.update(batch.num_graphs, stats, 'train')
+        stats_step = {'loss': loss.item(), 'acc': acc.item()}
+        self.logger.update(batch.num_graphs, stats_step, 'train')
 
+      # lr decay
+      if scheduler is not None:
+        scheduler.step()
+
+      # val
       model.eval()
       with torch.no_grad():
         for i, batch in enumerate(dataloader_val):
           batch = batch.to(self.device)
           loss, acc = model(batch)
 
-          stats = {'loss': loss.item(), 'acc': acc.item()}
-          self.logger.update(batch.num_graphs, stats, 'val')
+          stats_step = {'loss': loss.item(), 'acc': acc.item()}
+          self.logger.update(batch.num_graphs, stats_step, 'val')
 
-      self.logger.summarize(epoch)
+      stats_epoch = {'lr': optimizer.param_groups[0]['lr']}
+      self.logger.summarize(epoch, stats=stats_epoch)
