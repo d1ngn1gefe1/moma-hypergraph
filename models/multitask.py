@@ -152,7 +152,7 @@ class MultitaskModel(nn.Module):
 
     loss_act = F.cross_entropy(logits_act, data.act_cids)
     loss_sact = F.cross_entropy(logits_sact, data.sact_cids)
-    loss_pa_aact = F.binary_cross_entropy_with_logits(logits_pa_aact, data.pa_aact_cids)
+    loss_pa_aact = F.binary_cross_entropy_with_logits(logits_pa_aact, data.pa_aact_cids)*10
     loss_actor = F.cross_entropy(logits_actor, data.actor_cids)
 
     acc_act = utils.get_acc(logits_act, data.act_cids)
@@ -166,7 +166,7 @@ class MultitaskModel(nn.Module):
     mAP_actor = utils.get_mAP(logits_actor, data.actor_cids)
 
     # loss = loss_act+loss_sact+loss_pa_aact+loss_actor
-    loss = 100*loss_pa_aact
+    loss = loss_pa_aact
     stats = {'loss_act': loss_act.item(),
              'loss_sact': loss_sact.item(),
              'loss_pa_aact': loss_pa_aact.item(),

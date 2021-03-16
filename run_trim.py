@@ -18,6 +18,7 @@ parser.add_argument('--lr', default=1e-3, type=float)
 parser.add_argument('--weight_decay', default=5e-4, type=float)
 
 parser.add_argument('--split', default='split_by_untrim', type=str, choices=['split_by_trim', 'split_by_untrim'])
+parser.add_argument('--task', default='split_by_untrim', type=str, choices=['split_by_trim', 'split_by_untrim'])
 
 
 def main():
