@@ -244,19 +244,21 @@ class AG:
 @dataclass
 class AAct:
   actor_iids: List[str]
+  actor_cids: List[str]
   tracklets: np.ndarray  # [num_actors, num_frames]
   num_classes: int
 
   def __post_init__(self):
     if not all(is_actor(actor_iid) for actor_iid in self.actor_iids):
       raise ValueError
-    if self.actor_iids != sorted(self.actor_iids):
+    if self.actor_iids != sorted(set(self.actor_iids)):
       raise ValueError
 
   def __repr__(self):
     message = (
       f'AAct(\n'
       f'\tactor_iids={self.actor_iids}\n'
+      f'\tactor_cids={self.actor_cids}\n'
       f'\tnum_actors={self.tracklets.shape[0]}\n'
       f'\tnum_frames={self.tracklets.shape[1]}\n'
       f')'

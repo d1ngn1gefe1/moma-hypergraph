@@ -25,13 +25,12 @@ class Trainer:
       model.train()
       for i, batch in enumerate(dataloader_train):
         batch = batch.to(self.device)
-        loss, acc = model(batch)
+        loss, stats_step = model(batch)
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        stats_step = {'loss': loss.item(), 'acc': acc.item()}
         self.logger.update(batch.num_graphs, stats_step, 'train')
 
       # lr decay
@@ -43,9 +42,8 @@ class Trainer:
       with torch.no_grad():
         for i, batch in enumerate(dataloader_val):
           batch = batch.to(self.device)
-          loss, acc = model(batch)
+          loss, stats_step = model(batch)
 
-          stats_step = {'loss': loss.item(), 'acc': acc.item()}
           self.logger.update(batch.num_graphs, stats_step, 'val')
 
       stats_epoch = {'lr': optimizer.param_groups[0]['lr']}

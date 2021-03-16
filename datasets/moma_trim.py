@@ -23,10 +23,10 @@ class MOMATrim(datasets.VisionDataset):
       self.add_cfg()
 
   def add_cfg(self):
-    if self.cfg.task == 'act':
-      setattr(self.cfg, 'num_classes', len(self.api.act_cnames))
-    else:  # 'sact
-      setattr(self.cfg, 'num_classes', len(self.api.sact_cnames))
+    setattr(self.cfg, 'num_act_classes', len(self.api.act_cnames))
+    setattr(self.cfg, 'num_sact_classes', len(self.api.sact_cnames))
+    setattr(self.cfg, 'num_aact_classes', len(self.api.aact_cnames))
+    setattr(self.cfg, 'num_actor_classes', len(self.api.actor_cnames))
 
     if self.fetch == 'pyg':
       setattr(self.cfg, 'num_feats', self.feats[0].shape[1])
@@ -69,12 +69,10 @@ class MOMATrim(datasets.VisionDataset):
 
     elif self.fetch == 'pyg':
       feat = self.feats[index]
-      if self.cfg.task == 'act':
-        untrim_id = self.api.untrim_ids[trim_id]
-        y = self.api.act_cids[untrim_id]
-      else:  # 'sact'
-        y = self.api.sact_cids[trim_id]
-      data = utils.to_pyg_data(trim_ann, feat, y)
+      untrim_id = self.api.untrim_ids[trim_id]
+      act_cid = self.api.act_cids[untrim_id]
+      sact_cid = self.api.sact_cids[trim_id]
+      data = utils.to_pyg_data(trim_ann, feat, act_cid, sact_cid)
       return data
 
     else:

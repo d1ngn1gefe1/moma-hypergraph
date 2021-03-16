@@ -1,3 +1,4 @@
+from itertools import chain
 import numpy as np
 import torch
 from torch.utils.data.dataloader import default_collate
@@ -49,7 +50,7 @@ def collate_fn(batch):
   raise TypeError('DataLoader found invalid type: {}'.format(type(elem)))
 
 
-def to_pyg_data(trim_ann, feat, y):
+def to_pyg_data(trim_ann, feat, act_cid, sact_cid):
   """
    - edge_index: [2, num_edges]
    - node_feature: [num_nodes, num_node_features]
@@ -59,21 +60,37 @@ def to_pyg_data(trim_ann, feat, y):
    -
   """
   chunk_sizes = [ag.num_nodes for ag in trim_ann['ags']]
+  actor_iids = trim_ann['aact'].actor_iids
+  actor_cids = trim_ann['aact'].actor_cids
   feat_list = split_vl(feat, chunk_sizes)
   data_list = []
+  batch_actor = []
 
   for ag, feat in zip(trim_ann['ags'], feat_list):
     node_feature = feat
     node_label = ag.entity_cids
     edge_index, edge_label = ag.pairwise_edges
 
+    # the first index is for all objects
+    actor_indices = [0]*len(ag.object_iids)+\
+                    [actor_iids.index(actor_iid)+1 for actor_iid in ag.actor_iids]
+    batch_actor.append(actor_indices)
+
     # print(edge_index.shape, node_feature.shape, node_label.shape, edge_label.shape)
     data = Data(x=node_feature, edge_index=edge_index)
     data_list.append(data)
 
   data = Batch.from_data_list(data_list)
-  setattr(data, 'y', y)
-  setattr(data, 'batch_temporal', data.batch)
+  batch_frame = data.batch
+  batch_actor = torch.LongTensor(list(chain.from_iterable(batch_actor)))
+
   delattr(data, 'batch')
+
+  setattr(data, 'chunk_sizes', sum(chunk_sizes))
+  setattr(data, 'act_cids', act_cid)
+  setattr(data, 'sact_cids', sact_cid)
+  setattr(data, 'actor_cids', torch.LongTensor(actor_cids))
+  setattr(data, 'batch_frame', batch_frame)  # scatter per-video feat by frame
+  setattr(data, 'batch_actor', batch_actor)  # scatter per-video feat by node
 
   return data

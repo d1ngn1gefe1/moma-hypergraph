@@ -268,11 +268,19 @@ class BaseAPI(ABC):
   def parse_aact(self, raw_aact: List[List[Dict]], ags: List[AG]) -> AAct:
     assert len(raw_aact) == len(ags)
     num_frames = len(raw_aact)
+
     actor_iids = sorted(set(chain(*[ag.actor_iids for ag in ags])))
     aacts_actor_iids = sorted(set(chain(*[y['actor_id'].split(',') for x in raw_aact for y in x])))
     assert set(aacts_actor_iids).issubset(set(aacts_actor_iids))
     num_actors = len(actor_iids)
     tracklets = -2*np.ones((num_actors, num_frames), dtype=np.int64)  # absent
+
+    actor_cids = {}
+    for ag in ags:
+      for actor_iid, actor_cid in zip(ag.actor_iids, ag.actor_cids):
+        if actor_iid not in actor_cids:
+          actor_cids[actor_iid] = actor_cid
+    actor_cids = [actor_cids[actor_iid] for actor_iid in actor_iids]
 
     # encoded_aact = tracklets[i, j] is the encoded atomic action for actor actor_iids[i] in frame j
     for j, x in enumerate(raw_aact):
@@ -290,4 +298,4 @@ class BaseAPI(ABC):
         for i in j_pst_atv_actor_indices:
           tracklets[i, j] = add_encoded_aact(tracklets[i, j], j_aact_cid)
 
-    return AAct(actor_iids, tracklets, len(self.aact_cnames))
+    return AAct(actor_iids, actor_cids, tracklets, len(self.aact_cnames))
