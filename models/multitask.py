@@ -35,6 +35,8 @@ class Encoder(nn.Module):
 
 
 class ActHead(nn.Module):
+  """ Activity classification
+  """
   def __init__(self, num_classes, dim=256):
     super(ActHead, self).__init__()
 
@@ -50,6 +52,8 @@ class ActHead(nn.Module):
 
 
 class SActHead(nn.Module):
+  """ Sub-activity classification
+  """
   def __init__(self, num_classes, dim=256):
     super(SActHead, self).__init__()
 
@@ -83,6 +87,8 @@ class ActorPooling(nn.Module):
 
 
 class ActorHead(nn.Module):
+  """ Actor role classification
+  """
   def __init__(self, num_classes, dim=256):
     super(ActorHead, self).__init__()
 
@@ -98,8 +104,7 @@ class ActorHead(nn.Module):
 
 
 class PAAActHead(nn.Module):
-  """
-  Per-actor, multi-label atomic action classification
+  """ Per-actor, multi-label atomic action classification
   """
   def __init__(self, num_classes, dim=256):
     super(PAAActHead, self).__init__()
@@ -150,10 +155,10 @@ class MultitaskModel(nn.Module):
     logits_pa_aact = self.pa_aact_head(embed_actors)
     logits_actor = self.actor_head(embed_actors)
 
-    loss_act = F.cross_entropy(logits_act, data.act_cids)
-    loss_sact = F.cross_entropy(logits_sact, data.sact_cids)
-    loss_pa_aact = F.binary_cross_entropy_with_logits(logits_pa_aact, data.pa_aact_cids)*10
-    loss_actor = F.cross_entropy(logits_actor, data.actor_cids)
+    loss_act = F.cross_entropy(logits_act, data.act_cids)*self.cfg.weight_act
+    loss_sact = F.cross_entropy(logits_sact, data.sact_cids)*self.cfg.weight_sact
+    loss_pa_aact = F.binary_cross_entropy_with_logits(logits_pa_aact, data.pa_aact_cids)*self.cfg.weight_pa_aact
+    loss_actor = F.cross_entropy(logits_actor, data.actor_cids)*self.cfg.weight_actor
 
     acc_act = utils.get_acc(logits_act, data.act_cids)
     acc_sact = utils.get_acc(logits_sact, data.sact_cids)
@@ -165,8 +170,16 @@ class MultitaskModel(nn.Module):
     mAP_pa_aact = utils.get_mAP(logits_pa_aact, data.pa_aact_cids)
     mAP_actor = utils.get_mAP(logits_actor, data.actor_cids)
 
-    # loss = loss_act+loss_sact+loss_pa_aact+loss_actor
-    loss = loss_pa_aact
+    loss = 0
+    if 'act' in self.cfg.tasks:
+      loss += loss_act
+    if 'sact' in self.cfg.tasks:
+      loss += loss_sact
+    if 'pa_aact' in self.cfg.tasks:
+      loss += loss_pa_aact
+    if 'actor' in self.cfg.tasks:
+      loss += loss_actor
+
     stats = {'loss_act': loss_act.item(),
              'loss_sact': loss_sact.item(),
              'loss_pa_aact': loss_pa_aact.item(),
