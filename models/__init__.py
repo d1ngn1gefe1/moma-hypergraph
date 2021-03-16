@@ -1,4 +1,4 @@
 from .rgcn import RGCNModel
-from .gin import GINModel
+from .multitask import MultitaskModel
 
-__all__ = ('RGCNModel', 'GINModel')
+__all__ = ('RGCNModel', 'MultitaskModel')

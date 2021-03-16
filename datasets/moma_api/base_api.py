@@ -273,7 +273,7 @@ class BaseAPI(ABC):
     aacts_actor_iids = sorted(set(chain(*[y['actor_id'].split(',') for x in raw_aact for y in x])))
     assert set(aacts_actor_iids).issubset(set(aacts_actor_iids))
     num_actors = len(actor_iids)
-    tracklets = -2*np.ones((num_actors, num_frames), dtype=np.int64)  # absent
+    encoded_tracklets = -2*np.ones((num_actors, num_frames), dtype=np.int64)  # absent
 
     actor_cids = {}
     for ag in ags:
@@ -282,12 +282,12 @@ class BaseAPI(ABC):
           actor_cids[actor_iid] = actor_cid
     actor_cids = [actor_cids[actor_iid] for actor_iid in actor_iids]
 
-    # encoded_aact = tracklets[i, j] is the encoded atomic action for actor actor_iids[i] in frame j
+    # encoded_aact = encoded_tracklets[i, j] is the encoded atomic action for actor actor_iids[i] in frame j
     for j, x in enumerate(raw_aact):
       # present
       j_pst_actor_iids = ags[j].actor_iids
       j_pst_actor_indices = [actor_iids.index(actor_iid) for actor_iid in j_pst_actor_iids]
-      tracklets[j_pst_actor_indices, j] = -1
+      encoded_tracklets[j_pst_actor_indices, j] = -1
 
       # present + active
       j_aact_cids = [self.aact_cnames.index(y['class']) for y in x]
@@ -296,6 +296,6 @@ class BaseAPI(ABC):
       for j_aact_cid, j_pst_atv_actor_iids in zip(j_aact_cids, j_pst_atv_actor_iids_list):
         j_pst_atv_actor_indices = [actor_iids.index(actor_iid) for actor_iid in j_pst_atv_actor_iids]
         for i in j_pst_atv_actor_indices:
-          tracklets[i, j] = add_encoded_aact(tracklets[i, j], j_aact_cid)
+          encoded_tracklets[i, j] = add_encoded_aact(encoded_tracklets[i, j], j_aact_cid)
 
-    return AAct(actor_iids, actor_cids, tracklets, len(self.aact_cnames))
+    return AAct(actor_iids, actor_cids, encoded_tracklets, len(self.aact_cnames))

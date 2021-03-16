@@ -245,7 +245,7 @@ class AG:
 class AAct:
   actor_iids: List[str]
   actor_cids: List[str]
-  tracklets: np.ndarray  # [num_actors, num_frames]
+  encoded_tracklets: np.ndarray  # [num_actors, num_frames]
   num_classes: int
 
   def __post_init__(self):
@@ -259,23 +259,51 @@ class AAct:
       f'AAct(\n'
       f'\tactor_iids={self.actor_iids}\n'
       f'\tactor_cids={self.actor_cids}\n'
-      f'\tnum_actors={self.tracklets.shape[0]}\n'
-      f'\tnum_frames={self.tracklets.shape[1]}\n'
+      f'\tnum_actors={self.encoded_tracklets.shape[0]}\n'
+      f'\tnum_frames={self.encoded_tracklets.shape[1]}\n'
       f')'
     )
     return message
 
-  def get_multilabels(self, per_frame: bool) -> np.ndarray:
-    multilabels = np.zeros((self.tracklets.shape[1], self.num_classes), dtype=np.int64)
+  def get_pf_labels(self, frame_level: bool=True) -> np.ndarray:
+    """ Per-frame multi-labels
+    Return:
+     - frame-level: binary, [num_frames, num_classes]
+     - video-level: binary, [num_classes]
+    """
+    num_frames = self.encoded_tracklets.shape[1]
+    labels = np.zeros((num_frames, self.num_classes), dtype=np.int64)
 
-    for j in range(self.tracklets.shape[1]):
-      cids = sorted(set(chain(*[decode_aact(encoded_aact) for encoded_aact in self.tracklets[:, j]])))
+    for j in range(num_frames):
+      cids = sorted(set(chain(*[decode_aact(encoded_aact) for encoded_aact in self.encoded_tracklets[:, j]])))
       cids = [cid for cid in cids if cid >= 0]
-      multilabels[j, cids] = 1
+      labels[j, cids] = 1
 
     # [num_frames, num_classes] -> [num_classes]
-    if not per_frame:  # per video
-      multilabels = np.sum(multilabels, axis=0)
-      multilabels[multilabels > 0] = 1
+    if not frame_level:  # per video
+      labels = np.sum(labels, axis=-2)
+      labels[labels > 0] = 1
 
-    return multilabels
+    return labels
+
+  def get_pa_labels(self, frame_level: bool=True) -> np.ndarray:
+    """ Per-actor multi-labels
+    Return:
+     - frame-level: binary, [num_actors, num_frames, num_classes]
+     - video-level: binary, [num_actors, num_classes]
+    """
+    num_actors, num_frames = self.encoded_tracklets.shape
+    labels = np.zeros((num_actors, num_frames, self.num_classes))
+
+    for i in range(num_actors):
+      for j in range(num_frames):
+        cids = decode_aact(self.encoded_tracklets[i, j])
+        cids = [cid for cid in cids if cid >= 0]
+        labels[i, j, cids] = 1
+
+    # [num_frames, num_classes] -> [num_classes]
+    if not frame_level:  # per video
+      labels = np.sum(labels, axis=-2)
+      labels[labels > 0] = 1
+
+    return labels

@@ -26,7 +26,7 @@ def main():
   dataset_train = datasets.MOMATrim(cfg, 'train', fetch='pyg')
   dataset_val = datasets.MOMATrim(cfg, 'val', fetch='pyg')
 
-  model = models.GINModel(cfg)
+  model = models.MultitaskModel(cfg)
   trainer = engine.Trainer(cfg)
 
   trainer.fit(model, dataset_train, dataset_val)

@@ -82,9 +82,9 @@ class ActorPooling(nn.Module):
     return embed_actors
 
 
-class RoleHead(nn.Module):
+class ActorHead(nn.Module):
   def __init__(self, num_classes, dim=256):
-    super(RoleHead, self).__init__()
+    super(ActorHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)
     self.fc2 = nn.Linear(dim, num_classes)
@@ -97,9 +97,12 @@ class RoleHead(nn.Module):
     return x
 
 
-class AActHead(nn.Module):
+class PAAActHead(nn.Module):
+  """
+  Per-actor, multi-label atomic action classification
+  """
   def __init__(self, num_classes, dim=256):
-    super(AActHead, self).__init__()
+    super(PAAActHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)
     self.fc2 = nn.Linear(dim, num_classes)
@@ -112,17 +115,17 @@ class AActHead(nn.Module):
     return x
 
 
-class GINModel(nn.Module):
+class MultitaskModel(nn.Module):
   def __init__(self, cfg):
-    super(GINModel, self).__init__()
+    super(MultitaskModel, self).__init__()
 
     self.cfg = cfg
     self.encoder = Encoder(num_feats=self.cfg.num_feats)
     self.actor_pooling = ActorPooling()
     self.act_head = ActHead(num_classes=self.cfg.num_act_classes)
     self.sact_head = SActHead(num_classes=self.cfg.num_sact_classes)
-    # self.aact_head = RoleHead(num_classes=self.cfg.num_aact_classes)
-    self.role_head = RoleHead(num_classes=self.cfg.num_actor_classes)
+    self.pa_aact_head = PAAActHead(num_classes=self.cfg.num_aact_classes)
+    self.actor_head = ActorHead(num_classes=self.cfg.num_actor_classes)
 
   def get_optimizer(self):
     parameters = [self.encoder.parameters(), self.act_head.parameters(), self.sact_head.parameters()]
@@ -144,23 +147,38 @@ class GINModel(nn.Module):
 
     logits_act = self.act_head(embed, data.batch)
     logits_sact = self.sact_head(embed, data.batch)
-    logits_role = self.role_head(embed_actors)
+    logits_pa_aact = self.pa_aact_head(embed_actors)
+    logits_actor = self.actor_head(embed_actors)
 
     loss_act = F.cross_entropy(logits_act, data.act_cids)
     loss_sact = F.cross_entropy(logits_sact, data.sact_cids)
-    loss_role = F.cross_entropy(logits_role, data.actor_cids)
-    acc_act = utils.accuracy(logits_act, data.act_cids)
-    acc_sact = utils.accuracy(logits_sact, data.sact_cids)
-    acc_role = utils.accuracy(logits_role, data.actor_cids)
+    loss_pa_aact = F.binary_cross_entropy_with_logits(logits_pa_aact, data.pa_aact_cids)
+    loss_actor = F.cross_entropy(logits_actor, data.actor_cids)
 
-    # loss = loss_act+loss_sact+loss_role
-    loss = loss_role
+    acc_act = utils.get_acc(logits_act, data.act_cids)
+    acc_sact = utils.get_acc(logits_sact, data.sact_cids)
+    acc_pa_aact = utils.get_acc(logits_pa_aact, data.pa_aact_cids)
+    acc_actor = utils.get_acc(logits_actor, data.actor_cids)
+
+    mAP_act = utils.get_mAP(logits_act, data.act_cids)
+    mAP_sact = utils.get_mAP(logits_sact, data.sact_cids)
+    mAP_pa_aact = utils.get_mAP(logits_pa_aact, data.pa_aact_cids)
+    mAP_actor = utils.get_mAP(logits_actor, data.actor_cids)
+
+    # loss = loss_act+loss_sact+loss_pa_aact+loss_actor
+    loss = 100*loss_pa_aact
     stats = {'loss_act': loss_act.item(),
              'loss_sact': loss_sact.item(),
-             'loss_role': loss_role.item(),
-             'acc_act': acc_act.item(),
-             'acc_sact': acc_sact.item(),
-             'acc_role': acc_role.item()}
+             'loss_pa_aact': loss_pa_aact.item(),
+             'loss_actor': loss_actor.item(),
+             'acc_act': acc_act,
+             'acc_sact': acc_sact,
+             'acc_pa_aact': acc_pa_aact,
+             'acc_actor': acc_actor,
+             'mAP_act': mAP_act,
+             'mAP_sact': mAP_sact,
+             'mAP_pa_aact': mAP_pa_aact,
+             'mAP_actor': mAP_actor}
 
     return loss, stats
 
