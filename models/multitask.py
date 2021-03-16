@@ -34,40 +34,6 @@ class Encoder(nn.Module):
     return x
 
 
-class ActHead(nn.Module):
-  """ Activity classification
-  """
-  def __init__(self, num_classes, dim=256):
-    super(ActHead, self).__init__()
-
-    self.fc1 = nn.Linear(dim, dim)
-    self.fc2 = nn.Linear(dim, num_classes)
-
-  def forward(self, x, batch_video):
-    x = global_mean_pool(x, batch_video)
-    x = F.relu(self.fc1(x))
-    x = F.dropout(x, p=0.5, training=self.training)
-    x = self.fc2(x)
-    return x
-
-
-class SActHead(nn.Module):
-  """ Sub-activity classification
-  """
-  def __init__(self, num_classes, dim=256):
-    super(SActHead, self).__init__()
-
-    self.fc1 = nn.Linear(dim, dim)
-    self.fc2 = nn.Linear(dim, num_classes)
-
-  def forward(self, x, batch_video):
-    x = global_mean_pool(x, batch_video)
-    x = F.relu(self.fc1(x))
-    x = F.dropout(x, p=0.5, training=self.training)
-    x = self.fc2(x)
-    return x
-
-
 class ActorPooling(nn.Module):
   def __init__(self):
     super(ActorPooling, self).__init__()
@@ -86,11 +52,62 @@ class ActorPooling(nn.Module):
     return embed_actors
 
 
-class ActorHead(nn.Module):
-  """ Actor role classification
+class ActHead(nn.Module):
+  """ Activity classification
   """
   def __init__(self, num_classes, dim=256):
-    super(ActorHead, self).__init__()
+    super(ActHead, self).__init__()
+
+    self.fc1 = nn.Linear(dim, dim)
+    self.fc2 = nn.Linear(dim, num_classes)
+
+  def forward(self, embed, batch_video):
+    x = global_mean_pool(embed, batch_video)
+    x = F.relu(self.fc1(x))
+    x = F.dropout(x, p=0.5, training=self.training)
+    x = self.fc2(x)
+    return x
+
+
+class SActHead(nn.Module):
+  """ Sub-activity classification
+  """
+  def __init__(self, num_classes, dim=256):
+    super(SActHead, self).__init__()
+
+    self.fc1 = nn.Linear(dim, dim)
+    self.fc2 = nn.Linear(dim, num_classes)
+
+  def forward(self, embed, batch_video):
+    x = global_mean_pool(embed, batch_video)
+    x = F.relu(self.fc1(x))
+    x = F.dropout(x, p=0.5, training=self.training)
+    x = self.fc2(x)
+    return x
+
+
+class PSAActHead(nn.Module):
+  """ Per-scene, multi-label atomic action classification
+  """
+  def __init__(self, num_classes, dim=256):
+    super(PSAActHead, self).__init__()
+
+    self.fc1 = nn.Linear(dim, dim)
+    self.fc2 = nn.Linear(dim, num_classes)
+
+  def forward(self, embed, batch_video):
+    x = global_mean_pool(embed, batch_video)
+    x = F.relu(self.fc1(x))
+    x = F.dropout(x, p=0.5, training=self.training)
+    x = self.fc2(x)
+    return x
+
+
+class PAAActHead(nn.Module):
+  """ Per-actor, multi-label atomic action classification
+  """
+  def __init__(self, num_classes, dim=256):
+    super(PAAActHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)
     self.fc2 = nn.Linear(dim, num_classes)
@@ -103,11 +120,11 @@ class ActorHead(nn.Module):
     return x
 
 
-class PAAActHead(nn.Module):
-  """ Per-actor, multi-label atomic action classification
+class ActorHead(nn.Module):
+  """ Actor role classification
   """
   def __init__(self, num_classes, dim=256):
-    super(PAAActHead, self).__init__()
+    super(ActorHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)
     self.fc2 = nn.Linear(dim, num_classes)
@@ -129,6 +146,7 @@ class MultitaskModel(nn.Module):
     self.actor_pooling = ActorPooling()
     self.act_head = ActHead(num_classes=self.cfg.num_act_classes)
     self.sact_head = SActHead(num_classes=self.cfg.num_sact_classes)
+    self.ps_aact_head = PSAActHead(num_classes=self.cfg.num_aact_classes)
     self.pa_aact_head = PAAActHead(num_classes=self.cfg.num_aact_classes)
     self.actor_head = ActorHead(num_classes=self.cfg.num_actor_classes)
 
@@ -152,21 +170,25 @@ class MultitaskModel(nn.Module):
 
     logits_act = self.act_head(embed, data.batch)
     logits_sact = self.sact_head(embed, data.batch)
+    logits_ps_aact = self.ps_aact_head(embed, data.batch)
     logits_pa_aact = self.pa_aact_head(embed_actors)
     logits_actor = self.actor_head(embed_actors)
 
     loss_act = F.cross_entropy(logits_act, data.act_cids)*self.cfg.weight_act
     loss_sact = F.cross_entropy(logits_sact, data.sact_cids)*self.cfg.weight_sact
+    loss_ps_aact = F.binary_cross_entropy_with_logits(logits_ps_aact, data.ps_aact_cids)*self.cfg.weight_ps_aact
     loss_pa_aact = F.binary_cross_entropy_with_logits(logits_pa_aact, data.pa_aact_cids)*self.cfg.weight_pa_aact
     loss_actor = F.cross_entropy(logits_actor, data.actor_cids)*self.cfg.weight_actor
 
     acc_act = utils.get_acc(logits_act, data.act_cids)
     acc_sact = utils.get_acc(logits_sact, data.sact_cids)
+    acc_ps_aact = utils.get_acc(logits_ps_aact, data.ps_aact_cids)
     acc_pa_aact = utils.get_acc(logits_pa_aact, data.pa_aact_cids)
     acc_actor = utils.get_acc(logits_actor, data.actor_cids)
 
     mAP_act = utils.get_mAP(logits_act, data.act_cids)
     mAP_sact = utils.get_mAP(logits_sact, data.sact_cids)
+    mAP_ps_aact = utils.get_mAP(logits_ps_aact, data.ps_aact_cids)
     mAP_pa_aact = utils.get_mAP(logits_pa_aact, data.pa_aact_cids)
     mAP_actor = utils.get_mAP(logits_actor, data.actor_cids)
 
@@ -175,6 +197,8 @@ class MultitaskModel(nn.Module):
       loss += loss_act
     if 'sact' in self.cfg.tasks:
       loss += loss_sact
+    if 'ps_aact' in self.cfg.tasks:
+      loss += loss_ps_aact
     if 'pa_aact' in self.cfg.tasks:
       loss += loss_pa_aact
     if 'actor' in self.cfg.tasks:
@@ -182,14 +206,19 @@ class MultitaskModel(nn.Module):
 
     stats = {'loss_act': loss_act.item(),
              'loss_sact': loss_sact.item(),
+             'loss_ps_aact': loss_ps_aact.item(),
              'loss_pa_aact': loss_pa_aact.item(),
              'loss_actor': loss_actor.item(),
+
              'acc_act': acc_act,
              'acc_sact': acc_sact,
+             'acc_ps_aact': acc_ps_aact,
              'acc_pa_aact': acc_pa_aact,
              'acc_actor': acc_actor,
+
              'mAP_act': mAP_act,
              'mAP_sact': mAP_sact,
+             'mAP_ps_aact': mAP_ps_aact,
              'mAP_pa_aact': mAP_pa_aact,
              'mAP_actor': mAP_actor}
 

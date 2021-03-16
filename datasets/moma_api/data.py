@@ -265,14 +265,14 @@ class AAct:
     )
     return message
 
-  def get_pf_labels(self, frame_level: bool=True) -> np.ndarray:
-    """ Per-frame multi-labels
+  def get_ps_labels(self, frame_level: bool=True) -> np.ndarray:
+    """ Per-scene multi-labels
     Return:
-     - frame-level: binary, [num_frames, num_classes]
-     - video-level: binary, [num_classes]
+     - frame-level: shape=[num_frames, num_classes], range=[0, 1]
+     - video-level: shape=[1, num_classes], range=[0, 1]
     """
     num_frames = self.encoded_tracklets.shape[1]
-    labels = np.zeros((num_frames, self.num_classes), dtype=np.int64)
+    labels = np.zeros((num_frames, self.num_classes))
 
     for j in range(num_frames):
       cids = sorted(set(chain(*[decode_aact(encoded_aact) for encoded_aact in self.encoded_tracklets[:, j]])))
@@ -281,7 +281,7 @@ class AAct:
 
     # [num_frames, num_classes] -> [num_classes]
     if not frame_level:  # per video
-      labels = np.sum(labels, axis=-2)
+      labels = np.sum(labels, axis=-2, keepdims=True)
       labels[labels > 0] = 1
 
     return labels
@@ -289,8 +289,8 @@ class AAct:
   def get_pa_labels(self, frame_level: bool=True) -> np.ndarray:
     """ Per-actor multi-labels
     Return:
-     - frame-level: binary, [num_actors, num_frames, num_classes]
-     - video-level: binary, [num_actors, num_classes]
+     - frame-level: shape=[num_actors, num_frames, num_classes], range=[0, 1]
+     - video-level: shape=[num_actors, num_classes], range=[0, 1]
     """
     num_actors, num_frames = self.encoded_tracklets.shape
     labels = np.zeros((num_actors, num_frames, self.num_classes))
@@ -301,7 +301,7 @@ class AAct:
         cids = [cid for cid in cids if cid >= 0]
         labels[i, j, cids] = 1
 
-    # [num_frames, num_classes] -> [num_classes]
+    # [num_actors, num_frames, num_classes] -> [num_actors, num_classes]
     if not frame_level:  # per video
       labels = np.sum(labels, axis=-2)
       labels[labels > 0] = 1

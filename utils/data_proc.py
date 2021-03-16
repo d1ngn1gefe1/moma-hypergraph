@@ -83,6 +83,7 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid):
   data = Batch.from_data_list(data_list)
   batch_frame = data.batch
   batch_actor = torch.LongTensor(list(chain.from_iterable(batch_actor)))
+  ps_aact_cids = torch.from_numpy(trim_ann['aact'].get_ps_labels(frame_level=False))
   pa_aact_cids = torch.from_numpy(trim_ann['aact'].get_pa_labels(frame_level=False))
 
   delattr(data, 'batch')
@@ -90,6 +91,7 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid):
   setattr(data, 'chunk_sizes', sum(chunk_sizes))
   setattr(data, 'act_cids', act_cid)
   setattr(data, 'sact_cids', sact_cid)
+  setattr(data, 'ps_aact_cids', ps_aact_cids)
   setattr(data, 'pa_aact_cids', pa_aact_cids)
   setattr(data, 'actor_cids', torch.LongTensor(actor_cids))
   setattr(data, 'batch_frame', batch_frame)  # scatter per-video feat by frame
