@@ -23,7 +23,8 @@ parser.add_argument('--weight_sact', default=1.0, type=float)
 parser.add_argument('--weight_pa_aact', default=5, type=float)
 parser.add_argument('--weight_actor', default=1.0, type=float)
 parser.add_argument('--tasks', default=['act', 'sact', 'pa_aact', 'actor'], nargs='+', type=str,
-                    choices=['act', 'sact', 'pa_aact', 'actor'])
+                    choices=['act', 'sact', 'pa_aact', 'actor'],
+                    help='activity cls, sub-activity cls, per-actor atomic action cls, actor role cls')
 
 
 def main():
