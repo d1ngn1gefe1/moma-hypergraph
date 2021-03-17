@@ -4,8 +4,8 @@ from .base_api import BaseAPI
 
 
 class TrimAPI(BaseAPI):
-  def __init__(self, data_dir, split):
-    super().__init__(data_dir, split=split)
+  def __init__(self, data_dir, split_by, feats_dname):
+    super().__init__(data_dir, split_by=split_by, feats_dname=feats_dname)
     self._trim_anns = self.load_anns()
 
   def load_anns(self):

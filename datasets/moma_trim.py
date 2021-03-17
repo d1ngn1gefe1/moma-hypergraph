@@ -8,12 +8,12 @@ import utils
 
 
 class MOMATrim(datasets.VisionDataset):
-  def __init__(self, cfg, split=None, fetch=None):
+  def __init__(self, cfg, split=None, fetch=None, level='trim'):
     super(MOMATrim, self).__init__(cfg.data_dir)
 
     self.cfg = cfg
     self.fetch = fetch
-    self.api = get_moma_api(cfg.data_dir, cfg.split, 'trim')
+    self.api = get_moma_api(cfg.data_dir, cfg.split_by, cfg.feats_dname, level)
     self.trim_ids = self.api.get_trim_ids(split=split)
 
     if self.fetch == 'pyg':

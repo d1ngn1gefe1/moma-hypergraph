@@ -26,8 +26,8 @@ class BaseAPI(ABC):
    - cid: class id
    - cname: class name
   """
-  def __init__(self, data_dir, split, anns_dname='anns', untrim_dname='untrim_videos',
-               trim_dname='trim_videos', trim_sample_dname='trim_sample_videos', feats_dname='feats'):
+  def __init__(self, data_dir, split_by, feats_dname='feats', anns_dname='anns', untrim_dname='untrim_videos',
+               trim_dname='trim_videos', trim_sample_dname='trim_sample_videos'):
     # directories
     self.anns_dir = os.path.join(data_dir, anns_dname)
     self.untrim_dir = os.path.join(data_dir, untrim_dname)
@@ -44,7 +44,7 @@ class BaseAPI(ABC):
         self.act_cids, self.sact_cids, self.untrim_ids, self.trim_ids = self.create_indices()
 
     # splits
-    self.split_train, self.split_val = self.load_splits(split)
+    self.split_train, self.split_val = self.load_splits(split_by)
 
   def load_raw_anns(self, video_fname='video_anns.json', graph_fname='graph_anns.json'):
     """
@@ -58,15 +58,14 @@ class BaseAPI(ABC):
 
     return raw_video_anns, raw_graph_anns
 
-  def load_splits(self, split, train_fname='train.txt', val_fname='val.txt'):
-    with open(os.path.join(self.anns_dir, split, train_fname), 'r') as f_train, \
-         open(os.path.join(self.anns_dir, split, val_fname), 'r') as f_val:
+  def load_splits(self, split_by, train_fname='train.txt', val_fname='val.txt'):
+    with open(os.path.join(self.anns_dir, 'split_by_{}'.format(split_by), train_fname), 'r') as f_train, \
+         open(os.path.join(self.anns_dir, 'split_by_{}'.format(split_by), val_fname), 'r') as f_val:
       split_train = f_train.read().splitlines()
       split_val = f_val.read().splitlines()
 
     assert sorted(split_train+split_val) == sorted(self.sact_cids.keys())
-    print('{}: len(train) = {}, len(val) = {}'.format(split.replace('_', ' ').capitalize(),
-                                                      len(split_train), len(split_val)))
+    print('{}: len(train) = {}, len(val) = {}'.format('Split by {}'.format(split_by), len(split_train), len(split_val)))
 
     return split_train, split_val
 

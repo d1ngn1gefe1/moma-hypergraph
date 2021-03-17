@@ -72,6 +72,8 @@ class MultitaskModel(nn.Module):
     mAP_pa_aact = utils.get_mAP(logits_pa_aact, data.pa_aact_cids)
     mAP_actor = utils.get_mAP(logits_actor, data.actor_cids)
 
+    # print(data.x.shape, data.edge_index.shape, embed.shape, embed_actors.shape)
+
     loss = 0
     if 'act' in self.cfg.tasks:
       loss += loss_act

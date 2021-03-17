@@ -19,7 +19,7 @@ import utils
 class FeatExtractorModel(nn.Module):
   def __init__(self):
     super(FeatExtractorModel, self).__init__()
-    self.net = models.resnet152(pretrained=True)
+    self.net = models.resnet18(pretrained=True)
     self.net.layer4.register_forward_hook(self.hook_fn)
     self.buffer = {}
 
@@ -106,6 +106,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_dir', default='/home/ubuntu/datasets/MOMA', type=str)
 parser.add_argument('--num_workers', default=32, type=int)
 parser.add_argument('--batch_size', default=50, type=int)
+parser.add_argument('--split_by', default='untrim', type=str, choices=['trim', 'untrim'])
 
 
 def main():

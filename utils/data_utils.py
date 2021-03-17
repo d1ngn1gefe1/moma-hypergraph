@@ -57,7 +57,6 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid, oracle_nodes=False, oracle_ed
    - edge_feature: [num_edges, num_edge_features]
    - node_label: [num_nodes, num_node_classes]
    - edge_label: [num_edges]
-   -
   """
   chunk_sizes = [ag.num_nodes for ag in trim_ann['ags']]
   actor_iids = trim_ann['aact'].actor_iids  # list
@@ -77,7 +76,6 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid, oracle_nodes=False, oracle_ed
     batch_actor.append(actor_indices)
 
     data = Data(x=node_feature, edge_index=edge_index, edge_label=edge_label)
-
     data_list.append(data)
 
   # concatenate graphs from a video into a single graph
