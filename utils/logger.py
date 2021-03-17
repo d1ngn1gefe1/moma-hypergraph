@@ -53,8 +53,8 @@ class Logger:
   def __del__(self):
     self.writer.close()
 
-  def update(self, n, stats, split):
-    for key, value in stats.items():
+  def update(self, stats, split):
+    for key, (value, n) in stats.items():
       tag = '{}/{}'.format(key, split)
 
       if tag not in self.meters.keys():

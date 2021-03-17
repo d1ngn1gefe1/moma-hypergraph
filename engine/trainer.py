@@ -31,7 +31,7 @@ class Trainer:
         loss.backward()
         optimizer.step()
 
-        self.logger.update(batch.num_graphs, stats_step, 'train')
+        self.logger.update(stats_step, 'train')
 
       # lr decay
       if scheduler is not None:
@@ -44,7 +44,7 @@ class Trainer:
           batch = batch.to(self.device)
           loss, stats_step = model(batch)
 
-          self.logger.update(batch.num_graphs, stats_step, 'val')
+          self.logger.update(stats_step, 'val')
 
       stats_epoch = {'lr': optimizer.param_groups[0]['lr']}
       self.logger.summarize(epoch, stats=stats_epoch)

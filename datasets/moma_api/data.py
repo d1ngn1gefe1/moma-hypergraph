@@ -201,7 +201,7 @@ class AG:
 
   @property
   def entity_iids(self):
-    return self.actor_iids+self.object_iids  # same order as feat
+    return self.actor_iids+self.object_iids  # same order as attr
 
   @property
   def actor_cids(self):
@@ -223,13 +223,16 @@ class AG:
   def edges(self):
     edge_index = []
     edge_label = []
-    edge_feat = []
+    hyperedge_label = []
+    edge_attr = []
+    hyperedge_chunk_sizes = []
 
     for relat in self.relats:
       src_indices = [self.entity_iids.index(iid) for iid in relat.src_iids]
       snk_indices = [self.entity_iids.index(iid) for iid in relat.snk_iids]
       edge_index.append(torch.LongTensor(list(product(src_indices, snk_indices))).T)
       edge_label += [relat.cid]*len(src_indices)*len(snk_indices)
+      hyperedge_label.append(relat.cid)
 
       src_bboxes = [self.entities[src_index].bbox for src_index in src_indices]
       snk_bboxes = [self.entities[snk_index].bbox for snk_index in snk_indices]
@@ -237,20 +240,26 @@ class AG:
       for src_bbox in src_bboxes:
         for snk_bbox in snk_bboxes:
           distance = src_bbox.distance(snk_bbox)
-          edge_feat.append([src_bbox.x1, src_bbox.y1, src_bbox.w, src_bbox.h,
+          edge_attr.append([src_bbox.x1, src_bbox.y1, src_bbox.w, src_bbox.h,
                             snk_bbox.x1, snk_bbox.y1, snk_bbox.w, snk_bbox.h,
                             distance])
+
+      hyperedge_chunk_sizes.append([len(src_indices)*len(snk_indices)])
 
     if len(edge_index) == 0:
       edge_index = torch.LongTensor(2, 0)
       edge_label = torch.LongTensor(0)
-      edge_feat = torch.FloatTensor(0, 9)
+      hyperedge_label = torch.LongTensor(0)
+      edge_attr = torch.FloatTensor(0, 9)
+      hyperedge_chunk_sizes = torch.LongTensor(0)
     else:
       edge_index = torch.cat(edge_index, dim=1)
       edge_label = torch.LongTensor(edge_label)
-      edge_feat = torch.FloatTensor(edge_feat)
+      hyperedge_label = torch.LongTensor(hyperedge_label)
+      edge_attr = torch.FloatTensor(edge_attr)
+      hyperedge_chunk_sizes = torch.LongTensor(hyperedge_chunk_sizes)
 
-    return edge_index, edge_label, edge_feat
+    return edge_index, edge_label, hyperedge_label, edge_attr, hyperedge_chunk_sizes
 
   def resize(self, scale: float):
     return AG([actor.resize(scale) for actor in self.actors],

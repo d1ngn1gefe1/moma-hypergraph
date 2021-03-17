@@ -23,9 +23,10 @@ class ActorPooling(nn.Module):
   def __init__(self):
     super(ActorPooling, self).__init__()
 
-  def forward(self, x, chunk_sizes, batch_actor):
-    batch_actor_list = utils.split_vl(batch_actor, chunk_sizes)
-    embed_list = utils.split_vl(x, chunk_sizes)
+  def forward(self, x, node_video_chunk_sizes, batch_actor):
+    # split x and batch_actor into a list of items, each corresponding to a video
+    batch_actor_list = utils.split_vl(batch_actor, node_video_chunk_sizes)
+    embed_list = utils.split_vl(x, node_video_chunk_sizes)
 
     # loop across videos
     embed_actors = []

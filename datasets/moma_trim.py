@@ -27,6 +27,7 @@ class MOMATrim(datasets.VisionDataset):
     setattr(self.cfg, 'num_sact_classes', self.api.num_sact_classes)
     setattr(self.cfg, 'num_aact_classes', self.api.num_aact_classes)
     setattr(self.cfg, 'num_actor_classes', self.api.num_actor_classes)
+    setattr(self.cfg, 'num_relat_classes', self.api.num_relat_classes)
 
   @staticmethod
   def resize(video, trim_ann, scale=0.5):
@@ -39,10 +40,10 @@ class MOMATrim(datasets.VisionDataset):
 
   def load_feats(self, feats_fname='feats.pt', chunk_sizes_fname='chunk_sizes.pt', trim_ids_fname='trim_ids.txt'):
     all_feats = torch.load(os.path.join(self.api.feats_dir, feats_fname))
-    chunk_sizes = torch.load(os.path.join(self.api.feats_dir, chunk_sizes_fname))
+    node_video_chunk_sizes = torch.load(os.path.join(self.api.feats_dir, chunk_sizes_fname))  # split nodes by video
     with open(os.path.join(self.api.feats_dir, trim_ids_fname), 'r') as f:
       all_trim_ids = f.read().splitlines()
-    all_feats = utils.split_vl(all_feats, chunk_sizes)
+    all_feats = utils.split_vl(all_feats, node_video_chunk_sizes)
 
     indices = [all_trim_ids.index(trim_id) for trim_id in self.trim_ids]
     feats = [all_feats[index] for index in indices]
