@@ -1,26 +1,38 @@
-from itertools import chain
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
 from .encoders import encoders
 from .decoders import ActHead, SActHead, PSAActHead, PAAActHead, ActorHead
-from .layers import ActorPooling
+from .layers import ActorPooling, MLP
 import utils
 
 
+DIM_NODE_ATTR = 512
+DIM_EDGE_ATTR = 9
+DIM_ORC_NODE_ATTR = 140
+DIM_ORC_EDGE_ATTR = 23
+
+
 class MultitaskModel(nn.Module):
-  def __init__(self, cfg):
+  def __init__(self, cfg, dim=256):
     super(MultitaskModel, self).__init__()
 
     self.cfg = cfg
-    self.encoder = encoders[cfg.backbone](num_feats=cfg.num_feats)
+    self.encoder = encoders[cfg.backbone](dim=dim*2 if cfg.oracle else dim)
     self.actor_pooling = ActorPooling()
-    self.act_head = ActHead(num_classes=cfg.num_act_classes)
-    self.sact_head = SActHead(num_classes=cfg.num_sact_classes)
-    self.ps_aact_head = PSAActHead(num_classes=cfg.num_aact_classes)
-    self.pa_aact_head = PAAActHead(num_classes=cfg.num_aact_classes)
-    self.actor_head = ActorHead(num_classes=cfg.num_actor_classes)
+    self.act_head = ActHead(num_classes=cfg.num_act_classes, dim=dim*2 if cfg.oracle else dim)
+    self.sact_head = SActHead(num_classes=cfg.num_sact_classes, dim=dim*2 if cfg.oracle else dim)
+    self.ps_aact_head = PSAActHead(num_classes=cfg.num_aact_classes, dim=dim*2 if cfg.oracle else dim)
+    self.pa_aact_head = PAAActHead(num_classes=cfg.num_aact_classes, dim=dim*2 if cfg.oracle else dim)
+    self.actor_head = ActorHead(num_classes=cfg.num_actor_classes, dim=dim*2 if cfg.oracle else dim)
+
+    self.mlp_node = MLP(DIM_NODE_ATTR, dim)
+    self.mlp_edge = MLP(DIM_EDGE_ATTR, dim)
+    if cfg.oracle:
+      self.mlp_orc_node = MLP(DIM_ORC_NODE_ATTR, dim)
+      self.mlp_orc_edge = MLP(DIM_ORC_EDGE_ATTR, dim)
 
     self.count_parameters()
 
@@ -30,9 +42,7 @@ class MultitaskModel(nn.Module):
     print('Number of trainable parameters: {}'.format(num_parameters))
 
   def get_optimizer(self):
-    parameters = [self.encoder.parameters(), self.act_head.parameters(), self.sact_head.parameters(),
-                  self.ps_aact_head.parameters(), self.pa_aact_head.parameters(), self.actor_head.parameters()]
-    optimizer = optim.Adam(chain(*parameters), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay)
+    optimizer = optim.Adam(self.parameters(), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay)
     return optimizer
 
   def get_scheduler(self, optimizer):
@@ -45,7 +55,16 @@ class MultitaskModel(nn.Module):
      - batch_frame: scatter per-video feat by frame
      - batch_actor: scatter per-video feat by frame
     """
-    embed = self.encoder(data.x, data.edge_index)
+    node_attr = self.mlp_node(data.x)
+    edge_attr = self.mlp_edge(data.edge_attr)
+
+    if self.cfg.oracle:
+      orc_node_attr = self.mlp_orc_node(data.orc_node_attr)
+      orc_edge_attr = self.mlp_orc_edge(data.orc_edge_attr)
+      node_attr = torch.cat([node_attr, orc_node_attr], dim=-1)
+      edge_attr = torch.cat([edge_attr, orc_edge_attr], dim=-1)
+
+    embed = self.encoder(data.edge_index, node_attr, edge_attr)
     embed_actors = self.actor_pooling(embed, data.chunk_sizes, data.batch_actor)
 
     logits_act = self.act_head(embed, data.batch)
@@ -71,8 +90,6 @@ class MultitaskModel(nn.Module):
     mAP_ps_aact = utils.get_mAP(logits_ps_aact, data.ps_aact_cids)
     mAP_pa_aact = utils.get_mAP(logits_pa_aact, data.pa_aact_cids)
     mAP_actor = utils.get_mAP(logits_actor, data.actor_cids)
-
-    # print(data.x.shape, data.edge_index.shape, embed.shape, embed_actors.shape)
 
     loss = 0
     if 'act' in self.cfg.tasks:

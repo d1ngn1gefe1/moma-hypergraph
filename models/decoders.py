@@ -6,7 +6,7 @@ from torch_geometric.nn import global_mean_pool
 class ActHead(nn.Module):
   """ Activity classification
   """
-  def __init__(self, num_classes, dim=256):
+  def __init__(self, num_classes, dim):
     super(ActHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)
@@ -23,7 +23,7 @@ class ActHead(nn.Module):
 class SActHead(nn.Module):
   """ Sub-activity classification
   """
-  def __init__(self, num_classes, dim=256):
+  def __init__(self, num_classes, dim):
     super(SActHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)
@@ -40,7 +40,7 @@ class SActHead(nn.Module):
 class PSAActHead(nn.Module):
   """ Per-scene, multi-label atomic action classification
   """
-  def __init__(self, num_classes, dim=256):
+  def __init__(self, num_classes, dim):
     super(PSAActHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)
@@ -57,7 +57,7 @@ class PSAActHead(nn.Module):
 class PAAActHead(nn.Module):
   """ Per-actor, multi-label atomic action classification
   """
-  def __init__(self, num_classes, dim=256):
+  def __init__(self, num_classes, dim):
     super(PAAActHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)
@@ -74,7 +74,7 @@ class PAAActHead(nn.Module):
 class ActorHead(nn.Module):
   """ Actor role classification
   """
-  def __init__(self, num_classes, dim=256):
+  def __init__(self, num_classes, dim):
     super(ActorHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)

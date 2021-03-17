@@ -6,21 +6,26 @@ import models
 
 parser = argparse.ArgumentParser()
 
+# hardware
 parser.add_argument('--gpu', default=0, type=int)
 parser.add_argument('--num_workers', default=16, type=int)
 
+# file system
 parser.add_argument('--data_dir', default='/home/ubuntu/datasets/MOMA', type=str)
 parser.add_argument('--save_dir', default='/home/ubuntu/ckpt/moma-model', type=str)
 parser.add_argument('--feats_dname', default='feats_18', type=str)
+parser.add_argument('--split_by', default='untrim', type=str, choices=['trim', 'untrim'])
+
+# hyper-parameters
 parser.add_argument('--num_epochs', default=100, type=int)
 parser.add_argument('--batch_size', default=32, type=int)
-
 parser.add_argument('--lr', default=5e-3, type=float)
 parser.add_argument('--weight_decay', default=5e-4, type=float)
 
-parser.add_argument('--split_by', default='untrim', type=str, choices=['trim', 'untrim'])
-parser.add_argument('--backbone', default='GIN', type=str, choices=['GIN', 'HGCN'])
-parser.add_argument('--oracles', default=[True, False], nargs='+', type=bool, help='nodes, edges')
+# experiments
+parser.add_argument('--backbone', default='GINE', type=str, choices=['GINE', 'GIN', 'HGCN'],
+                    help='GINE usess edge attr, GIN and HGCN do not')
+parser.add_argument('--oracle', default=False, action='store_true')
 parser.add_argument('--weights', default=[1.0, 1.0, 5.0, 5.0, 1.0], nargs='+', type=float,
                     help='act, sact, ps_aact, pa_aact, actor')
 parser.add_argument('--tasks', default=['act', 'sact', 'ps_aact', 'pa_aact', 'actor'], nargs='+', type=str,

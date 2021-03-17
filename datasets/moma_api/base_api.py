@@ -208,6 +208,30 @@ class BaseAPI(ABC):
            actor_cnames, object_cnames,  relat_cnames, \
            act_cids, sact_cids, untrim_ids, trim_ids
 
+  @property
+  def num_act_classes(self):
+    return len(self.act_cnames)
+
+  @property
+  def num_sact_classes(self):
+    return len(self.sact_cnames)
+
+  @property
+  def num_aact_classes(self):
+    return len(self.aact_cnames)
+
+  @property
+  def num_actor_classes(self):
+    return len(self.actor_cnames)
+
+  @property
+  def num_object_classes(self):
+    return len(self.object_cnames)
+
+  @property
+  def num_relat_classes(self):
+    return len(self.relat_cnames)
+
   @staticmethod
   def parse_bbox(raw_bbox: Dict, size: Size) -> BBox:
     x = [raw_bbox['topLeft']['x'], raw_bbox['bottomLeft']['x'], raw_bbox['topRight']['x'], raw_bbox['bottomRight']['x']]

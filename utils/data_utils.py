@@ -50,14 +50,18 @@ def collate_fn(batch):
   raise TypeError('DataLoader found invalid type: {}'.format(type(elem)))
 
 
-def to_pyg_data(trim_ann, feat, act_cid, sact_cid, oracle_nodes=False, oracle_edges=False):
+def to_pyg_data(trim_ann, feat, act_cid, sact_cid,
+                num_actor_classes, num_object_classes, num_relat_classes):
   """
    - edge_index: [2, num_edges]
-   - node_feature: [num_nodes, num_node_features]
-   - edge_feature: [num_edges, num_edge_features]
-   - node_label: [num_nodes, num_node_classes]
+   - node_attr: [num_nodes, num_node_attrs]
+   - edge_attr: [num_edges, num_edge_attrs]
+   - node_label: [num_nodes]
    - edge_label: [num_edges]
+   - orc_node_attr: [num_nodes, num_actor_classes+num_object_classes], one-hot
+   - orc_edge_attr: [num_edges, num_relat_classes], one-hot
   """
+
   chunk_sizes = [ag.num_nodes for ag in trim_ann['ags']]
   actor_iids = trim_ann['aact'].actor_iids  # list
   actor_cids = trim_ann['aact'].actor_cids  # list
@@ -67,15 +71,23 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid, oracle_nodes=False, oracle_ed
 
   # create a list of Data objects, one for each graph (frame)
   for ag, feat in zip(trim_ann['ags'], feat_list):
-    node_feature = feat
-    node_label = ag.entity_cids
-    edge_index, edge_label = ag.edges
+    node_attr = feat
+    node_label = torch.LongTensor(ag.actor_cids+[object_cid+num_actor_classes for object_cid in ag.object_cids])
+    edge_index, edge_label, edge_attr = ag.edges
+
+    orc_node_attr = torch.zeros(feat.shape[0], num_actor_classes+num_object_classes)
+    orc_node_attr[torch.arange(feat.shape[0]), node_label] = 1
+
+    orc_edge_attr = torch.zeros(edge_index.shape[1], num_relat_classes)
+    orc_edge_attr[torch.arange(edge_index.shape[1]), torch.LongTensor(edge_label)] = 1
 
     # the first index is for all objects
     actor_indices = [0]*len(ag.object_iids)+[actor_iids.index(actor_iid)+1 for actor_iid in ag.actor_iids]
     batch_actor.append(actor_indices)
 
-    data = Data(x=node_feature, edge_index=edge_index, edge_label=edge_label)
+    data = Data(edge_index=edge_index,
+                x=node_attr, orc_node_attr=orc_node_attr, node_label=node_label,
+                edge_attr=edge_attr, orc_edge_attr=orc_edge_attr, edge_label=edge_label)
     data_list.append(data)
 
   # concatenate graphs from a video into a single graph

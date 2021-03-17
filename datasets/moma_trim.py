@@ -23,13 +23,10 @@ class MOMATrim(datasets.VisionDataset):
       self.add_cfg()
 
   def add_cfg(self):
-    setattr(self.cfg, 'num_act_classes', len(self.api.act_cnames))
-    setattr(self.cfg, 'num_sact_classes', len(self.api.sact_cnames))
-    setattr(self.cfg, 'num_aact_classes', len(self.api.aact_cnames))
-    setattr(self.cfg, 'num_actor_classes', len(self.api.actor_cnames))
-
-    if self.fetch == 'pyg':
-      setattr(self.cfg, 'num_feats', self.feats[0].shape[1])
+    setattr(self.cfg, 'num_act_classes', self.api.num_act_classes)
+    setattr(self.cfg, 'num_sact_classes', self.api.num_sact_classes)
+    setattr(self.cfg, 'num_aact_classes', self.api.num_aact_classes)
+    setattr(self.cfg, 'num_actor_classes', self.api.num_actor_classes)
 
   @staticmethod
   def resize(video, trim_ann, scale=0.5):
@@ -72,7 +69,8 @@ class MOMATrim(datasets.VisionDataset):
       untrim_id = self.api.untrim_ids[trim_id]
       act_cid = self.api.act_cids[untrim_id]
       sact_cid = self.api.sact_cids[trim_id]
-      data = utils.to_pyg_data(trim_ann, feat, act_cid, sact_cid, *self.cfg.oracles)
+      data = utils.to_pyg_data(trim_ann, feat, act_cid, sact_cid,
+                               self.api.num_actor_classes, self.api.num_object_classes, self.api.num_relat_classes)
 
       return data
 

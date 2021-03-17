@@ -89,6 +89,11 @@ class BBox:
   def resize(self, scale: float):
     return BBox(round(self.x1*scale), round(self.y1*scale), round(self.w*scale), round(self.h*scale))
 
+  def distance(self, other):
+    dx = (self.x1+self.w//2)-(other.x1+other.w//2)
+    dy = (self.y1+self.h//2)-(other.y1+other.h//2)
+    return np.sqrt(dx**2+dy**2)
+
 
 @dataclass
 class Entity:
@@ -179,6 +184,10 @@ class AG:
     return message
 
   @property
+  def entities(self):
+    return self.actors+self.objects
+
+  @property
   def relat_entity_iids(self):
     return sorted(chain(*[relat.src_iids+relat.snk_iids for relat in self.relats]))
 
@@ -203,12 +212,8 @@ class AG:
     return [object.cid for object in self.objects]
 
   @property
-  def entity_cids(self):
-    return self.actor_cids+self.object_cids
-
-  @property
   def num_nodes(self):
-    return len(self.actors)+len(self.objects)
+    return len(self.entities)
 
   @property
   def num_edges(self):
@@ -218,6 +223,7 @@ class AG:
   def edges(self):
     edge_index = []
     edge_label = []
+    edge_feat = []
 
     for relat in self.relats:
       src_indices = [self.entity_iids.index(iid) for iid in relat.src_iids]
@@ -225,14 +231,26 @@ class AG:
       edge_index.append(torch.LongTensor(list(product(src_indices, snk_indices))).T)
       edge_label += [relat.cid]*len(src_indices)*len(snk_indices)
 
+      src_bboxes = [self.entities[src_index].bbox for src_index in src_indices]
+      snk_bboxes = [self.entities[snk_index].bbox for snk_index in snk_indices]
+
+      for src_bbox in src_bboxes:
+        for snk_bbox in snk_bboxes:
+          distance = src_bbox.distance(snk_bbox)
+          edge_feat.append([src_bbox.x1, src_bbox.y1, src_bbox.w, src_bbox.h,
+                            snk_bbox.x1, snk_bbox.y1, snk_bbox.w, snk_bbox.h,
+                            distance])
+
     if len(edge_index) == 0:
       edge_index = torch.LongTensor(2, 0)
       edge_label = torch.LongTensor(0)
+      edge_feat = torch.FloatTensor(0, 9)
     else:
       edge_index = torch.cat(edge_index, dim=1)
       edge_label = torch.LongTensor(edge_label)
+      edge_feat = torch.FloatTensor(edge_feat)
 
-    return edge_index, edge_label
+    return edge_index, edge_label, edge_feat
 
   def resize(self, scale: float):
     return AG([actor.resize(scale) for actor in self.actors],
