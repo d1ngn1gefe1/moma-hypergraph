@@ -50,7 +50,7 @@ def collate_fn(batch):
   raise TypeError('DataLoader found invalid type: {}'.format(type(elem)))
 
 
-def to_pyg_data(trim_ann, feat, act_cid, sact_cid, hyperedges=False):
+def to_pyg_data(trim_ann, feat, act_cid, sact_cid, oracle_nodes=False, oracle_edges=False):
   """
    - edge_index: [2, num_edges]
    - node_feature: [num_nodes, num_node_features]
@@ -66,6 +66,7 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid, hyperedges=False):
   data_list = []
   batch_actor = []
 
+  # create a list of Data objects, one for each graph (frame)
   for ag, feat in zip(trim_ann['ags'], feat_list):
     node_feature = feat
     node_label = ag.entity_cids
@@ -80,14 +81,17 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid, hyperedges=False):
 
     data_list.append(data)
 
+  # concatenate graphs from a video into a single graph
   data = Batch.from_data_list(data_list)
   batch_frame = data.batch
   batch_actor = torch.LongTensor(list(chain.from_iterable(batch_actor)))
   ps_aact_cids = torch.from_numpy(trim_ann['aact'].get_ps_labels(frame_level=False))
   pa_aact_cids = torch.from_numpy(trim_ann['aact'].get_pa_labels(frame_level=False))
 
+  # cheat the assert statement so that batches can be further batched
   delattr(data, 'batch')
 
+  # set useful attributes
   setattr(data, 'chunk_sizes', sum(chunk_sizes))
   setattr(data, 'act_cids', act_cid)
   setattr(data, 'sact_cids', sact_cid)

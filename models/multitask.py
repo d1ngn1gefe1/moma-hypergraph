@@ -23,7 +23,8 @@ class MultitaskModel(nn.Module):
     self.actor_head = ActorHead(num_classes=cfg.num_actor_classes)
 
   def get_optimizer(self):
-    parameters = [self.encoder.parameters(), self.act_head.parameters(), self.sact_head.parameters()]
+    parameters = [self.encoder.parameters(), self.act_head.parameters(), self.sact_head.parameters(),
+                  self.ps_aact_head.parameters(), self.pa_aact_head.parameters(), self.actor_head.parameters()]
     optimizer = optim.Adam(chain(*parameters), lr=self.cfg.lr, weight_decay=self.cfg.weight_decay)
     return optimizer
 

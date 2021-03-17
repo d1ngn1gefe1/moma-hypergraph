@@ -14,7 +14,7 @@ parser.add_argument('--save_dir', default='/home/ubuntu/ckpt/moma-model', type=s
 parser.add_argument('--num_epochs', default=300, type=int)
 parser.add_argument('--batch_size', default=32, type=int)
 
-parser.add_argument('--lr', default=5e-3, type=float)
+parser.add_argument('--lr', default=1e-3, type=float)
 parser.add_argument('--weight_decay', default=5e-4, type=float)
 
 parser.add_argument('--split', default='split_by_untrim', type=str, choices=['split_by_trim', 'split_by_untrim'])
