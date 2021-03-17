@@ -215,20 +215,19 @@ class AG:
     return len(self.relats)
 
   @property
-  def pairwise_edges(self):
-    entity_iids = self.entity_iids
+  def edges(self):
     edge_index = []
     edge_label = []
 
     for relat in self.relats:
-      src_indices = [entity_iids.index(iid) for iid in relat.src_iids]
-      snk_indices = [entity_iids.index(iid) for iid in relat.snk_iids]
+      src_indices = [self.entity_iids.index(iid) for iid in relat.src_iids]
+      snk_indices = [self.entity_iids.index(iid) for iid in relat.snk_iids]
       edge_index.append(torch.LongTensor(list(product(src_indices, snk_indices))).T)
       edge_label += [relat.cid]*len(src_indices)*len(snk_indices)
 
     if len(edge_index) == 0:
       edge_index = torch.LongTensor(2, 0)
-      edge_label = None
+      edge_label = torch.LongTensor(0)
     else:
       edge_index = torch.cat(edge_index, dim=1)
       edge_label = torch.LongTensor(edge_label)

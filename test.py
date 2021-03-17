@@ -127,5 +127,25 @@ def main6():
   print([len(trim_ann['ags']) for trim_ann in trim_anns])
 
 
+def main7():
+  import torch
+  from utils import PyGData
+  from torch_geometric.data import Batch
+
+  x1 = torch.zeros(5, 10)  # [num_nodes, num_features]
+  x2 = torch.zeros(3, 10)  # [num_nodes, num_features]
+  edge_index1 = torch.LongTensor([[0, 1, 0, 1, 0, 1],
+                                  [0, 0, 1, 1, 2, 2]])
+  edge_index2 = torch.LongTensor([[0, 1, 0, 1, 3, 4],
+                                  [0, 0, 1, 1, 2, 2]])
+
+  data1 = PyGData(x=x1, edge_index=edge_index1)
+  data2 = PyGData(x=x2, edge_index=edge_index2)
+  data_list = [data1, data2]
+  data = Batch.from_data_list(data_list)
+
+  print(data.edge_index)
+
+
 if __name__ == '__main__':
-  main5()
+  main7()

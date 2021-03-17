@@ -72,7 +72,8 @@ class MOMATrim(datasets.VisionDataset):
       untrim_id = self.api.untrim_ids[trim_id]
       act_cid = self.api.act_cids[untrim_id]
       sact_cid = self.api.sact_cids[trim_id]
-      data = utils.to_pyg_data(trim_ann, feat, act_cid, sact_cid)
+      data = utils.to_pyg_data(trim_ann, feat, act_cid, sact_cid, self.cfg.backbone == 'HGCN')
+
       return data
 
     else:

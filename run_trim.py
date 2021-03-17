@@ -18,18 +18,11 @@ parser.add_argument('--lr', default=5e-3, type=float)
 parser.add_argument('--weight_decay', default=5e-4, type=float)
 
 parser.add_argument('--split', default='split_by_untrim', type=str, choices=['split_by_trim', 'split_by_untrim'])
-parser.add_argument('--weight_act', default=1.0, type=float)
-parser.add_argument('--weight_sact', default=1.0, type=float)
-parser.add_argument('--weight_ps_aact', default=5, type=float)
-parser.add_argument('--weight_pa_aact', default=5, type=float)
-parser.add_argument('--weight_actor', default=1.0, type=float)
-parser.add_argument('--tasks', default=['ps_aact'], nargs='+', type=str,
-                    choices=['act', 'sact', 'ps_aact', 'pa_aact', 'actor'],
-                    help='activity cls, '
-                         'sub-activity cls, '
-                         'per-scene atomic action cls, '
-                         'per-actor atomic action cls, '
-                         'actor role cls')
+parser.add_argument('--backbone', default='HGCN', type=str, choices=['GIN', 'HGCN'])
+parser.add_argument('--weights', default=[1.0, 1.0, 5.0, 5.0, 1.0], nargs='+', type=float,
+                    help='act, sact, ps_aact, pa_aact, actor')
+parser.add_argument('--tasks', default=['ps_aact', 'pa_aact'], nargs='+', type=str,
+                    choices=['act', 'sact', 'ps_aact', 'pa_aact', 'actor'])
 
 
 def main():

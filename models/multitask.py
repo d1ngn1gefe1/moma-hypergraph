@@ -3,14 +3,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch_geometric.nn import GINConv, global_mean_pool
+from torch_geometric.nn import GINConv, HypergraphConv, global_mean_pool
 
 import utils
 
 
-class Encoder(nn.Module):
+class GINEncoder(nn.Module):
   def __init__(self, num_feats, dim=256):
-    super(Encoder, self).__init__()
+    super(GINEncoder, self).__init__()
 
     nn1 = nn.Sequential(nn.Linear(num_feats, dim), nn.ReLU(), nn.Linear(dim, dim))
     self.conv1 = GINConv(nn1)
@@ -32,6 +32,38 @@ class Encoder(nn.Module):
     x = F.relu(self.conv3(x, edge_index))
     x = self.bn3(x)
     return x
+
+
+class HGCNEncoder(nn.Module):
+  def __init__(self, num_feats, dim=256):
+    super(HGCNEncoder, self).__init__()
+
+    self.conv1 = HypergraphConv(num_feats, dim)
+    self.nn1 = nn.Sequential(nn.Linear(dim, dim), nn.ReLU(), nn.Linear(dim, dim))
+    self.bn1 = nn.BatchNorm1d(dim)
+
+    self.conv2 = HypergraphConv(dim, dim)
+    self.nn2 = nn.Sequential(nn.Linear(dim, dim), nn.ReLU(), nn.Linear(dim, dim))
+    self.bn2 = nn.BatchNorm1d(dim)
+
+    self.conv3 = HypergraphConv(dim, dim)
+    self.nn3 = nn.Sequential(nn.Linear(dim, dim), nn.ReLU(), nn.Linear(dim, dim))
+    self.bn3 = nn.BatchNorm1d(dim)
+
+  def forward(self, x, edge_index):
+    x = self.conv1(x, edge_index)
+    x = F.relu(self.nn1(x))
+    x = self.bn1(x)
+    x = self.conv2(x, edge_index)
+    x = F.relu(self.nn2(x))
+    x = self.bn2(x)
+    x = self.conv3(x, edge_index)
+    x = F.relu(self.nn3(x))
+    x = self.bn3(x)
+    return x
+
+
+encoders = {'GIN': GINEncoder, 'HGCN': HGCNEncoder}
 
 
 class ActorPooling(nn.Module):
@@ -142,13 +174,13 @@ class MultitaskModel(nn.Module):
     super(MultitaskModel, self).__init__()
 
     self.cfg = cfg
-    self.encoder = Encoder(num_feats=self.cfg.num_feats)
+    self.encoder = encoders[cfg.backbone](num_feats=cfg.num_feats)
     self.actor_pooling = ActorPooling()
-    self.act_head = ActHead(num_classes=self.cfg.num_act_classes)
-    self.sact_head = SActHead(num_classes=self.cfg.num_sact_classes)
-    self.ps_aact_head = PSAActHead(num_classes=self.cfg.num_aact_classes)
-    self.pa_aact_head = PAAActHead(num_classes=self.cfg.num_aact_classes)
-    self.actor_head = ActorHead(num_classes=self.cfg.num_actor_classes)
+    self.act_head = ActHead(num_classes=cfg.num_act_classes)
+    self.sact_head = SActHead(num_classes=cfg.num_sact_classes)
+    self.ps_aact_head = PSAActHead(num_classes=cfg.num_aact_classes)
+    self.pa_aact_head = PAAActHead(num_classes=cfg.num_aact_classes)
+    self.actor_head = ActorHead(num_classes=cfg.num_actor_classes)
 
   def get_optimizer(self):
     parameters = [self.encoder.parameters(), self.act_head.parameters(), self.sact_head.parameters()]
@@ -174,11 +206,11 @@ class MultitaskModel(nn.Module):
     logits_pa_aact = self.pa_aact_head(embed_actors)
     logits_actor = self.actor_head(embed_actors)
 
-    loss_act = F.cross_entropy(logits_act, data.act_cids)*self.cfg.weight_act
-    loss_sact = F.cross_entropy(logits_sact, data.sact_cids)*self.cfg.weight_sact
-    loss_ps_aact = F.binary_cross_entropy_with_logits(logits_ps_aact, data.ps_aact_cids)*self.cfg.weight_ps_aact
-    loss_pa_aact = F.binary_cross_entropy_with_logits(logits_pa_aact, data.pa_aact_cids)*self.cfg.weight_pa_aact
-    loss_actor = F.cross_entropy(logits_actor, data.actor_cids)*self.cfg.weight_actor
+    loss_act = F.cross_entropy(logits_act, data.act_cids)*self.cfg.weights[0]
+    loss_sact = F.cross_entropy(logits_sact, data.sact_cids)*self.cfg.weights[1]
+    loss_ps_aact = F.binary_cross_entropy_with_logits(logits_ps_aact, data.ps_aact_cids)*self.cfg.weights[2]
+    loss_pa_aact = F.binary_cross_entropy_with_logits(logits_pa_aact, data.pa_aact_cids)*self.cfg.weights[3]
+    loss_actor = F.cross_entropy(logits_actor, data.actor_cids)*self.cfg.weights[4]
 
     acc_act = utils.get_acc(logits_act, data.act_cids)
     acc_sact = utils.get_acc(logits_sact, data.sact_cids)

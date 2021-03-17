@@ -50,7 +50,7 @@ def collate_fn(batch):
   raise TypeError('DataLoader found invalid type: {}'.format(type(elem)))
 
 
-def to_pyg_data(trim_ann, feat, act_cid, sact_cid):
+def to_pyg_data(trim_ann, feat, act_cid, sact_cid, hyperedges=False):
   """
    - edge_index: [2, num_edges]
    - node_feature: [num_nodes, num_node_features]
@@ -69,15 +69,15 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid):
   for ag, feat in zip(trim_ann['ags'], feat_list):
     node_feature = feat
     node_label = ag.entity_cids
-    edge_index, edge_label = ag.pairwise_edges
+    edge_index, edge_label = ag.edges
 
     # the first index is for all objects
     actor_indices = [0]*len(ag.object_iids)+\
                     [actor_iids.index(actor_iid)+1 for actor_iid in ag.actor_iids]
     batch_actor.append(actor_indices)
 
-    # print(edge_index.shape, node_feature.shape, node_label.shape, edge_label.shape)
-    data = Data(x=node_feature, edge_index=edge_index)
+    data = Data(x=node_feature, edge_index=edge_index, edge_label=edge_label)
+
     data_list.append(data)
 
   data = Batch.from_data_list(data_list)
