@@ -7,7 +7,7 @@ import models
 parser = argparse.ArgumentParser()
 
 # hardware
-parser.add_argument('--gpu', default=3, type=int)
+parser.add_argument('--gpu', default=0, type=int)
 parser.add_argument('--num_workers', default=16, type=int)
 
 # file system
@@ -18,12 +18,12 @@ parser.add_argument('--split_by', default='untrim', type=str, choices=['trim', '
 
 # hyper-parameters
 parser.add_argument('--num_epochs', default=100, type=int)
-parser.add_argument('--batch_size', default=128, type=int)
+parser.add_argument('--batch_size', default=32, type=int)
 parser.add_argument('--lr', default=5e-3, type=float)
 parser.add_argument('--weight_decay', default=5e-4, type=float)
 
 # experiments
-parser.add_argument('--backbone', default='GCN', type=str, choices=['GINE', 'GCN', 'HGCN'],
+parser.add_argument('--backbone', default='HGCN', type=str, choices=['GINE', 'GCN', 'HGCN'],
                     help='GINE usess edge attr, GCN and HGCN do not')
 parser.add_argument('--oracle', default=False, action='store_true')
 parser.add_argument('--weights', default=[1.0, 1.0, 5.0, 5.0, 1.0, 1.0], nargs='+', type=float,

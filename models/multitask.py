@@ -1,3 +1,4 @@
+from itertools import chain
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -109,6 +110,8 @@ class MultitaskModel(nn.Module):
       loss += loss_pa_aact
     if 'actor' in self.cfg.tasks:
       loss += loss_actor
+    if 'relat' in self.cfg.tasks:
+      loss += loss_relat
 
     stats = {'loss_act': (loss_act.item(), logits_act.shape[0]),
              'loss_sact': (loss_sact.item(), logits_sact.shape[0]),
