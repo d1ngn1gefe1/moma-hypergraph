@@ -2,8 +2,20 @@ import os
 from torch.utils.tensorboard import SummaryWriter
 
 
+class bcolors:
+  HEADER = '\033[95m'
+  OKBLUE = '\033[94m'
+  OKCYAN = '\033[96m'
+  OKGREEN = '\033[92m'
+  WARNING = '\033[93m'
+  FAIL = '\033[91m'
+  ENDC = '\033[0m'
+  BOLD = '\033[1m'
+  UNDERLINE = '\033[4m'
+
+
 class AverageMeter:
-  def __init__(self, name, fmt=':f'):
+  def __init__(self, name, fmt=':4f'):
     self.name = name
     self.fmt = fmt
 
@@ -51,7 +63,7 @@ class Logger:
       self.meters[tag].update(value, n)
 
   def summarize(self, epoch, stats=None):
-    print('---------- Epoch {} ----------'.format(epoch))
+    print(f'{bcolors.WARNING}\n---------- Epoch {epoch} ----------{bcolors.ENDC}')
 
     for tag in self.meters.keys():
       self.writer.add_scalar(tag, self.meters[tag].avg, global_step=epoch)
@@ -60,7 +72,7 @@ class Logger:
     if stats is not None:
       for key, value in stats.items():
         self.writer.add_scalar(key, value, global_step=epoch)
-        print('{}: {}'.format(key, value))
+        print('{}: {:.4f}'.format(key, value))
 
     # reset
     for tag in self.meters.keys():

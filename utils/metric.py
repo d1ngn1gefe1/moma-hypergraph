@@ -34,7 +34,6 @@ def get_map_slowfast(preds, labels):
   Returns:
       mean_ap (int): final mAP score.
   """
-
   preds = preds[:, ~(np.all(labels == 0, axis=0))]
   labels = labels[:, ~(np.all(labels == 0, axis=0))]
   aps = [0]
