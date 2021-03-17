@@ -73,8 +73,7 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid, oracle_nodes=False, oracle_ed
     edge_index, edge_label = ag.edges
 
     # the first index is for all objects
-    actor_indices = [0]*len(ag.object_iids)+\
-                    [actor_iids.index(actor_iid)+1 for actor_iid in ag.actor_iids]
+    actor_indices = [0]*len(ag.object_iids)+[actor_iids.index(actor_iid)+1 for actor_iid in ag.actor_iids]
     batch_actor.append(actor_indices)
 
     data = Data(x=node_feature, edge_index=edge_index, edge_label=edge_label)

@@ -22,6 +22,13 @@ class MultitaskModel(nn.Module):
     self.pa_aact_head = PAAActHead(num_classes=cfg.num_aact_classes)
     self.actor_head = ActorHead(num_classes=cfg.num_actor_classes)
 
+    self.count_parameters()
+
+  def count_parameters(self):
+    num_parameters = sum(p.numel() for p in self.parameters() if p.requires_grad)
+    print(self)
+    print('Number of trainable parameters: {}'.format(num_parameters))
+
   def get_optimizer(self):
     parameters = [self.encoder.parameters(), self.act_head.parameters(), self.sact_head.parameters(),
                   self.ps_aact_head.parameters(), self.pa_aact_head.parameters(), self.actor_head.parameters()]

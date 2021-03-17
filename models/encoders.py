@@ -7,16 +7,13 @@ class GINEncoder(nn.Module):
   def __init__(self, num_feats, dim=256):
     super(GINEncoder, self).__init__()
 
-    nn1 = nn.Sequential(nn.Linear(num_feats, dim), nn.ReLU(), nn.Linear(dim, dim))
-    self.conv1 = GINConv(nn1)
+    self.conv1 = GINConv(nn.Linear(num_feats, dim))
     self.bn1 = nn.BatchNorm1d(dim)
 
-    nn2 = nn.Sequential(nn.Linear(dim, dim), nn.ReLU(), nn.Linear(dim, dim))
-    self.conv2 = GINConv(nn2)
+    self.conv2 = GINConv(nn.Linear(dim, dim))
     self.bn2 = nn.BatchNorm1d(dim)
 
-    nn3 = nn.Sequential(nn.Linear(dim, dim), nn.ReLU(), nn.Linear(dim, dim))
-    self.conv3 = GINConv(nn3)
+    self.conv3 = GINConv(nn.Linear(dim, dim))
     self.bn3 = nn.BatchNorm1d(dim)
 
   def forward(self, x, edge_index):
