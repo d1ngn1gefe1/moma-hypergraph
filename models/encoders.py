@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GINEConv, GINConv, HypergraphConv
+from torch_geometric.nn import GINEConv, GCNConv, HypergraphConv
 
 
 class GINEEncoder(nn.Module):
@@ -26,17 +26,17 @@ class GINEEncoder(nn.Module):
     return x
 
 
-class GINEncoder(nn.Module):
+class GCNEncoder(nn.Module):
   def __init__(self, dim):
-    super(GINEncoder, self).__init__()
+    super(GCNEncoder, self).__init__()
 
-    self.conv1 = GINConv(nn.Linear(dim, dim))
+    self.conv1 = GCNConv(dim, dim)
     self.bn1 = nn.BatchNorm1d(dim)
 
-    self.conv2 = GINConv(nn.Linear(dim, dim))
+    self.conv2 = GCNConv(dim, dim)
     self.bn2 = nn.BatchNorm1d(dim)
 
-    self.conv3 = GINConv(nn.Linear(dim, dim))
+    self.conv3 = GCNConv(dim, dim)
     self.bn3 = nn.BatchNorm1d(dim)
 
   def forward(self, edge_index, node_attr, edge_attr):
@@ -72,4 +72,4 @@ class HGCNEncoder(nn.Module):
     return x
 
 
-encoders = {'GINE': GINEEncoder, 'GIN': GINEncoder, 'HGCN': HGCNEncoder}
+encoders = {'GINE': GINEEncoder, 'GCN': GCNEncoder, 'HGCN': HGCNEncoder}
