@@ -36,3 +36,23 @@ class ActorPooling(nn.Module):
     embed_actors = torch.cat(embed_actors, dim=0)
 
     return embed_actors
+
+
+class FramePooling(nn.Module):
+  def __init__(self):
+    super(FramePooling, self).__init__()
+
+  def forward(self, x, node_video_chunk_sizes, batch_frame):
+    # split x and batch_actor into a list of items, each corresponding to a video
+    batch_frame_list = utils.split_vl(batch_frame, node_video_chunk_sizes)
+    embed_list = utils.split_vl(x, node_video_chunk_sizes)
+
+    # loop across videos
+    embed_frames = []
+    for batch_frame, embed in zip(batch_frame_list, embed_list):
+      embed_frame = global_mean_pool(embed, batch_frame)
+      embed_frames.append(embed_frame)
+    embed_frames = torch.cat(embed_frames, dim=0)
+
+    return embed_frames
+

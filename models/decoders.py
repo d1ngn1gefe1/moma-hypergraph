@@ -40,11 +40,11 @@ class SActHead(nn.Module):
     return x
 
 
-class PSAActHead(nn.Module):
-  """ Per-scene, multi-label atomic action classification
+class PSVLAActHead(nn.Module):
+  """ Per-scene, video-level multi-label atomic action classification
   """
   def __init__(self, num_classes, dim):
-    super(PSAActHead, self).__init__()
+    super(PSVLAActHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)
     self.fc2 = nn.Linear(dim, num_classes)
@@ -57,11 +57,11 @@ class PSAActHead(nn.Module):
     return x
 
 
-class PAAActHead(nn.Module):
-  """ Per-actor, multi-label atomic action classification
+class PAVLAActHead(nn.Module):
+  """ Per-actor, video-level multi-label atomic action classification
   """
   def __init__(self, num_classes, dim):
-    super(PAAActHead, self).__init__()
+    super(PAVLAActHead, self).__init__()
 
     self.fc1 = nn.Linear(dim, dim)
     self.fc2 = nn.Linear(dim, num_classes)
@@ -71,6 +71,22 @@ class PAAActHead(nn.Module):
     x = F.dropout(x, p=0.5, training=self.training)
     x = self.fc2(x)
 
+    return x
+
+
+class PSFLAActHead(nn.Module):
+  """ Per-scene, frame-level multi-label atomic action classification
+  """
+  def __init__(self, num_classes, dim):
+    super(PSFLAActHead, self).__init__()
+
+    self.fc1 = nn.Linear(dim, dim)
+    self.fc2 = nn.Linear(dim, num_classes)
+
+  def forward(self, embed):
+    x = F.relu(self.fc1(embed))
+    x = F.dropout(x, p=0.5, training=self.training)
+    x = self.fc2(x)
     return x
 
 

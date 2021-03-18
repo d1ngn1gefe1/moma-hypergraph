@@ -23,13 +23,14 @@ parser.add_argument('--lr', default=5e-3, type=float)
 parser.add_argument('--weight_decay', default=5e-4, type=float)
 
 # experiments
-parser.add_argument('--backbone', default='HGCN', type=str, choices=['GINE', 'GCN', 'HGCN'],
+parser.add_argument('--backbone', default='GINE', type=str, choices=['GINE', 'GCN', 'HGCN'],
                     help='GINE usess edge attr, GCN and HGCN do not')
 parser.add_argument('--oracle', default=False, action='store_true')
-parser.add_argument('--weights', default=[1.0, 1.0, 5.0, 5.0, 1.0, 1.0], nargs='+', type=float,
-                    help='act, sact, ps_aact, pa_aact, actor, relat')
-parser.add_argument('--tasks', default=['act', 'sact', 'ps_aact', 'pa_aact', 'actor', 'relat'], nargs='+', type=str,
-                    choices=['act', 'sact', 'ps_aact', 'pa_aact', 'actor', 'relat'])
+parser.add_argument('--weights', default=[1.0, 1.0, 5.0, 5.0, 5.0, 1.0, 1.0], nargs='+', type=float,
+                    help='act, sact, psvl_aact, pavl_aact, psfl_aact, actor, relat')
+parser.add_argument('--tasks', nargs='+', type=str, 
+                    default=['act', 'sact', 'psvl_aact', 'pavl_aact', 'psfl_aact', 'actor', 'relat'],
+                    choices=['act', 'sact', 'psvl_aact', 'pavl_aact', 'psfl_aact', 'actor', 'relat'])
 
 
 def main():

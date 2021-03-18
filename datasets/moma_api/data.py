@@ -184,6 +184,10 @@ class AG:
     return message
 
   @property
+  def is_empty(self):
+    return self.num_nodes == 0 and self.num_edges == 0
+
+  @property
   def entities(self):
     return self.actors+self.objects
 
@@ -305,7 +309,7 @@ class AAct:
       cids = [cid for cid in cids if cid >= 0]
       labels[j, cids] = 1
 
-    # [num_frames, num_classes] -> [num_classes]
+    # [num_frames, num_classes] -> [1, num_classes]
     if not frame_level:  # per video
       labels = np.sum(labels, axis=-2, keepdims=True)
       labels[labels > 0] = 1

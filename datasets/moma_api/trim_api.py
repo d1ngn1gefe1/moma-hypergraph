@@ -26,6 +26,9 @@ class TrimAPI(BaseAPI):
       ag = self.parse_ag(raw_graph_ann)
       raw_aact = raw_graph_ann['annotation']['atomic_actions']
 
+      if ag.is_empty:
+        continue
+
       if trim_id not in trim_anns:  # trim_id not in raw_aacts
         trim_anns[trim_id] = {
           'size': self.parse_size(raw_graph_ann['frame_dim']),

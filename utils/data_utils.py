@@ -105,8 +105,9 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid,
   # calculate useful attributes
   node_video_chunk_sizes = sum(node_frame_chunk_sizes)
   hyperedge_chunk_sizes = torch.cat(hyperedge_chunk_sizes, dim=0) if len(hyperedge_chunk_sizes) > 0 else torch.LongTensor(0)
-  ps_aact_cids = torch.from_numpy(trim_ann['aact'].get_ps_labels(frame_level=False))
-  pa_aact_cids = torch.from_numpy(trim_ann['aact'].get_pa_labels(frame_level=False))
+  psvl_aact_cids = torch.from_numpy(trim_ann['aact'].get_ps_labels(frame_level=False))
+  pavl_aact_cids = torch.from_numpy(trim_ann['aact'].get_pa_labels(frame_level=False))
+  psfl_aact_cids = torch.from_numpy(trim_ann['aact'].get_ps_labels(frame_level=True))
   actor_cids = torch.LongTensor(actor_cids)
   batch_frame = data.batch  # length=num_nodes, scatter by frame id
   batch_actor = torch.LongTensor(list(chain.from_iterable(batch_actor)))  # length=num_nodes, scatter by actor iid
@@ -119,8 +120,9 @@ def to_pyg_data(trim_ann, feat, act_cid, sact_cid,
   setattr(data, 'hyperedge_chunk_sizes', hyperedge_chunk_sizes)  # split edges by hyperedge
   setattr(data, 'act_cids', act_cid)
   setattr(data, 'sact_cids', sact_cid)
-  setattr(data, 'ps_aact_cids', ps_aact_cids)
-  setattr(data, 'pa_aact_cids', pa_aact_cids)
+  setattr(data, 'psvl_aact_cids', psvl_aact_cids)
+  setattr(data, 'pavl_aact_cids', pavl_aact_cids)
+  setattr(data, 'psfl_aact_cids', psfl_aact_cids)
   setattr(data, 'actor_cids', actor_cids)
   setattr(data, 'batch_frame', batch_frame)  # scatter per-video feat by frame id
   setattr(data, 'batch_actor', batch_actor)  # scatter per-video feat by actor iid
