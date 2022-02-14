@@ -1,1 +1,1 @@
-# moma-model
+# moma-hypergraph
